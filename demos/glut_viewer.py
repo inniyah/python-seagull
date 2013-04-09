@@ -91,7 +91,7 @@ def keyboard(c, x, y):
 
 glutInit(sys.argv)
 
-glutInitDisplayMode(GLUT_RGBA|GLUT_STENCIL|GLUT_DOUBLE)
+glutInitDisplayString(b"rgba stencil double samples=4")
 glutCreateWindow(sys.argv[0].encode())
 
 glutReshapeFunc(gl_reshape)

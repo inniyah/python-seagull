@@ -238,8 +238,7 @@ def location(program, uniform):
 	try:
 		location = locations[uniform]
 	except KeyError:
-		location = _gl.GetUniformLocation(program, uniform.encode("utf8"))
-		locations[uniform] = location
+		location = locations[uniform] = _gl.GetUniformLocation(program, uniform.encode())
 	return location
 
 
