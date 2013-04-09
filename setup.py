@@ -8,6 +8,14 @@ metadata = {
 	"author":       'Renaud Blanch',
 	"author_email": 'blanch@imag.fr',
 	"url":          'http://bitbucket.org/rndblnch/seagull',
+	"licence":      'GPLv3+',
+	"classifiers":  [
+		"""License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)""",
+		"""Programming Language :: Python :: 2.7""",
+		"""Programming Language :: Python :: 3.3""",
+		"""Topic :: Software Development :: Libraries :: Python Modules""",
+		"""Topic :: Multimedia :: Graphics""",
+	                ],
 	"packages":     find_packages(),
 }
 
