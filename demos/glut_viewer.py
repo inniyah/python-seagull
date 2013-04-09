@@ -81,9 +81,48 @@ def display():
 	gl_display(scene)
 	glutSwapBuffers()
 
+
+# interation #################################################################
+
 def keyboard(c, x, y):
 	if c == b'q':
 		sys.exit(0)
+	glutPostRedisplay()
+
+def pick(x, y):
+	for path, point in reversed(scene.pick(x, y)):
+		return path
+	return [scene, group]
+
+
+IDLE, DRAGGING, ZOOMING = range(3)
+current_state = IDLE
+
+def mouse(button, state, x, y):
+	global current_state, path, x0, y0
+	if state == GLUT_DOWN:
+		path = pick(x, y)
+		if button == GLUT_LEFT_BUTTON:
+			current_state = DRAGGING
+		elif button == GLUT_RIGHT_BUTTON:
+			current_state = ZOOMING
+	else:
+		state = IDLE
+	x0, y0 = x, y
+
+def motion(x1, y1):
+	global current_state, path, x0, y0
+	p0 = x0, y0
+	p1 = x1, y1
+	if current_state == DRAGGING:
+		for elem in path:
+			p0 = elem.project(*p0)
+			p1 = elem.project(*p1)
+		ox, oy, _ = p0
+		px, py, _ = p1
+		elem.transform.append(sg.Translate(px-ox, py-oy))
+		elem.transform = elem.transform.normalized()
+	x0, y0 = x1, y1
 	glutPostRedisplay()
 
 	
@@ -98,6 +137,8 @@ glutReshapeFunc(gl_reshape)
 glutDisplayFunc(display)
 
 glutKeyboardFunc(keyboard)
+glutMouseFunc(mouse)
+glutMotionFunc(motion)
 
 gl_prepare()
 
