@@ -24,14 +24,33 @@ Non-goals:
 Features
 --------
 
-2D scene graph 
+- scale dependent polygonalization
+- analytical picking
 
 
---------------- --------- -------
-Painting        supported remarks
---------------- --------- -------
-solid color     yes
-linear gradient yes       pixel precise
-radial gradient yes       pixel precise
-pattern         no
---------------- --------- -------
+SVG spec
+--------
+
+implemented:
+
+- shapes: path, rect, circle, ellipse, line, polyline, polygon
+- structure: group, use (including attributes inheritance)
+- painting: solid color, pixel precise linear and radial gradients (including units, transform, spread, href);
+- fill: rule (nonzero, evenodd)
+- stroke: cap (butt, round, square), join (miter, round, bevel), miterlimit
+- multi-pass rendering: clipping, masking, object opacity
+- transforms: translate, rotate, scale, skewX, skewY
+
+
+eventually:
+
+- shapes: text, tspan, image
+- painting: pattern
+- stroke: dash, marker
+- filters
+
+
+never:
+
+- DOM API
+
