@@ -86,11 +86,6 @@ def display():
 
 # interation #################################################################
 
-def keyboard(c, x, y):
-	if c == b'q':
-		sys.exit(0)
-	glutPostRedisplay()
-
 def pick(x, y):
 	for path, point in reversed(scene.pick(x, y)):
 		return path
@@ -101,44 +96,56 @@ def project(path, x, y, z=0):
 		x, y, z = elem.project(x, y, z)
 	return x, y
 
-IDLE, DRAGGING, ZOOMING = range(3)
-current_state = IDLE
 
-def mouse(button, state, x, y):
-	global current_state, path, origin, x0, y0
-	if state == GLUT_DOWN:
+IDLE, DRAGGING, ZOOMING = range(3)
+state = IDLE
+
+def mouse(button, event, x, y):
+	global state, path, origin, x0, y0
+	if event == GLUT_DOWN:
 		path = pick(x, y)
 		if button == GLUT_LEFT_BUTTON:
-			current_state = DRAGGING
+			state = DRAGGING
 		elif button == GLUT_RIGHT_BUTTON:
-			current_state = ZOOMING
+			state = ZOOMING
 	else:
 		state = IDLE
 	origin = x0, y0 = x, y
 
-def motion(x1, y1):
-	global current_state, path, origin, x0, y0
 
-	if current_state == DRAGGING:
+def motion(x1, y1):
+	global state, path, origin, x0, y0
+
+	if state == DRAGGING:
 		ox, oy = project(path, x0, y0)
 		px, py = project(path, x1, y1)
 		transformation = [sg.Translate(px-ox, py-oy)]
 
-	elif current_state == ZOOMING:
-		ox, oy = project(path, *origin)
+	elif state == ZOOMING:
 		ds = exp(((x1-x0)-(y1-y0))*.01)
+		ox, oy = project(path, *origin)
 		transformation = [
 			sg.Translate((1-ds)*ox, (1-ds)*oy),
 			sg.Scale(ds),
 		]
-
+	
+	else:
+		raise RuntimeError("Unexpected interaction state '%s'" % state)
+	
 	elem = path[-1]
 	elem.transform += transformation
 	elem.transform = elem.transform.normalized()
+	
 	x0, y0 = x1, y1
 	glutPostRedisplay()
 
-	
+
+def keyboard(c, x, y):
+	if c == b'q':
+		sys.exit(0)
+	glutPostRedisplay()
+
+
 # main #######################################################################
 
 glutInit(sys.argv)
@@ -149,9 +156,9 @@ glutCreateWindow(sys.argv[0].encode())
 glutReshapeFunc(gl_reshape)
 glutDisplayFunc(display)
 
-glutKeyboardFunc(keyboard)
 glutMouseFunc(mouse)
 glutMotionFunc(motion)
+glutKeyboardFunc(keyboard)
 
 gl_prepare()
 
