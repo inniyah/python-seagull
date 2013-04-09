@@ -7,6 +7,8 @@
 
 import sys
 
+from math import exp
+
 from OpenGL.GLUT import *
 
 from seagull import scenegraph as sg
@@ -94,12 +96,16 @@ def pick(x, y):
 		return path
 	return [scene, group]
 
+def project(path, x, y, z=0):
+	for elem in path:
+		x, y, z = elem.project(x, y, z)
+	return x, y
 
 IDLE, DRAGGING, ZOOMING = range(3)
 current_state = IDLE
 
 def mouse(button, state, x, y):
-	global current_state, path, x0, y0
+	global current_state, path, origin, x0, y0
 	if state == GLUT_DOWN:
 		path = pick(x, y)
 		if button == GLUT_LEFT_BUTTON:
@@ -108,20 +114,27 @@ def mouse(button, state, x, y):
 			current_state = ZOOMING
 	else:
 		state = IDLE
-	x0, y0 = x, y
+	origin = x0, y0 = x, y
 
 def motion(x1, y1):
-	global current_state, path, x0, y0
-	p0 = x0, y0
-	p1 = x1, y1
+	global current_state, path, origin, x0, y0
+
 	if current_state == DRAGGING:
-		for elem in path:
-			p0 = elem.project(*p0)
-			p1 = elem.project(*p1)
-		ox, oy, _ = p0
-		px, py, _ = p1
-		elem.transform.append(sg.Translate(px-ox, py-oy))
-		elem.transform = elem.transform.normalized()
+		ox, oy = project(path, x0, y0)
+		px, py = project(path, x1, y1)
+		transformation = [sg.Translate(px-ox, py-oy)]
+
+	elif current_state == ZOOMING:
+		ox, oy = project(path, *origin)
+		ds = exp(((x1-x0)-(y1-y0))*.01)
+		transformation = [
+			sg.Translate((1-ds)*ox, (1-ds)*oy),
+			sg.Scale(ds),
+		]
+
+	elem = path[-1]
+	elem.transform += transformation
+	elem.transform = elem.transform.normalized()
 	x0, y0 = x1, y1
 	glutPostRedisplay()
 
