@@ -13,6 +13,7 @@ from OpenGL.GLUT import *
 
 from seagull import scenegraph as sg
 from seagull.gl_utils import gl_prepare, gl_reshape, gl_display
+from seagull.svg import serialize
 
 
 # scene ######################################################################
@@ -143,6 +144,8 @@ def motion(x1, y1):
 def keyboard(c, x, y):
 	if c == b'q':
 		sys.exit(0)
+	elif c == b's':
+		sys.stdout.write(serialize(scene))
 	glutPostRedisplay()
 
 

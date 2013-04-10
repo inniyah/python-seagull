@@ -12,7 +12,6 @@ def _indent(s, level=1, tab="\t"):
 	indent = tab * level
 	return "\n".join("%s%s" % (indent, line) for line in s.split("\n"))
 
-
 def _u(v, encoding="utf8"):
 	"""provides a unicode string from anything."""
 	if isinstance(v, str):
@@ -22,7 +21,7 @@ def _u(v, encoding="utf8"):
 	elif v is None:
 		return "none"
 	else:
-		return str(v, encoding)
+		return str(v)
 
 
 # base classes ###############################################################
