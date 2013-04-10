@@ -10,7 +10,7 @@ import sys
 import xml.parsers.expat
 
 from tempfile import mkstemp
-from base64 import decodestring as base64decode
+from base64 import b64decode
 from math import sqrt, atan2, degrees, hypot
 from collections import defaultdict
 
@@ -89,8 +89,10 @@ def switify_values(d, elements):
 _UNITS = {  # http://www.w3.org/TR/SVG/coords.html#Units
 	"px":  1.,
 	"pt":  1.25,
+	"pc": 15,
 	"mm":  3.543307,
 	"cm": 35.43307,
+	"in": 90.,
 }
 
 _SIZE_FACTOR = 1.2
@@ -107,6 +109,7 @@ _ABSOLUTE_SIZES = {
 }
 
 def length(v, _=None):
+	v = v.lower()
 	if v in _ABSOLUTE_SIZES:
 		return _ABSOLUTE_SIZES[v]
 	
@@ -207,8 +210,8 @@ def href(v, _=None):
 		assert data.startswith("base64,")
 		data = data[len("base64,"):]
 		_, v = mkstemp(".%s" % ext)
-		with open(v, "w") as _image:
-			_image.write(base64decode(data))
+		with open(v, "bw") as _image:
+			_image.write(b64decode(data))
 	return ascii(v)
 
 
