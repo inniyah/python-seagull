@@ -42,7 +42,6 @@ def gl_reshaper(depth=1, centered=False):
 	
 		_gl.MatrixMode(_gl.MODELVIEW)
 		_gl.LoadIdentity()
-		_gl.Clear(_gl.COLOR_BUFFER_BIT|_gl.STENCIL_BUFFER_BIT)
 	return reshape
 
 gl_reshape = gl_reshaper()
@@ -50,7 +49,7 @@ gl_reshape = gl_reshaper()
 
 def gl_displayer(*_elements):
 	def display(*elements):
-		_gl.Clear(_gl.COLOR_BUFFER_BIT)
+		_gl.Clear(_gl.COLOR_BUFFER_BIT|_gl.STENCIL_BUFFER_BIT)
 		for elem in elements or _elements:
 			elem.render()
 		_gl.Flush()
