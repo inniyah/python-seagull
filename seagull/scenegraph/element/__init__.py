@@ -234,3 +234,4 @@ from .line import Line
 from .polyline import Polyline
 from .polygon import Polygon
 from .path import Path
+from .text import Text

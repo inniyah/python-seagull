@@ -15,6 +15,7 @@ from math import sqrt, atan2, degrees, hypot
 from collections import defaultdict
 
 from .. import scenegraph as sg
+from ..font.utils import get_font
 
 
 # utils ######################################################################
@@ -453,11 +454,10 @@ class Parser(object):
 		self.styles.update(styles("".join(self.cdata)))
 		self.cdata = []
 	
-
-	"""
+	
 	def open_text(self, **attributes):
 		for font_family in reversed(attributes.pop("font_family", "").split(",")):
-			font_family = fonts.get_font(font_family.strip())
+			font_family = get_font(font_family.strip())
 			if font_family:
 				attributes["font_family"] = font_family
 				break
@@ -469,7 +469,7 @@ class Parser(object):
 	def close_text(self):
 		text = self.texts.pop()
 		text.text = " ".join(self.cdata)
-	"""
+	
 	
 	def open_use(self, **attributes):
 		_href = attributes.pop("href")

@@ -27,7 +27,8 @@ old_cwd = os.getcwd()
 path, filename = os.path.split(filename)
 if path:
 	os.chdir(path)
-scene = parse(open(filename).read())
+with open(filename) as f:
+	scene = parse(f.read())
 os.chdir(old_cwd)
 
 (x_min, y_min), (x_max, y_max) = scene.aabbox()
