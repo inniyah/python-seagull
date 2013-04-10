@@ -11,7 +11,6 @@ Goals & non-goals
 Goals:
 
 - 2d scene graph suitable for interactive rendering
-- pythonic API
 - minimal set of dependencies
 
 
@@ -24,8 +23,12 @@ Non-goals:
 Features
 --------
 
+- pythonic API modeled after SVG spec & semantic
+- SVG parsing and serialization
 - scale dependent polygonalization
 - analytical picking
+- sub-pixel strokes rendering enhancement through width and opacity correction
+- per-pixel gradients
 
 
 SVG spec
@@ -35,7 +38,7 @@ implemented:
 
 - shapes: path, rect, circle, ellipse, line, polyline, polygon
 - structure: group, use (including attributes inheritance)
-- painting: solid color, pixel precise linear and radial gradients (including units, transform, spread, href);
+- painting: solid color, linear and radial gradients (including units, transform, spread, href);
 - fill: rule (nonzero, evenodd)
 - stroke: cap (butt, round, square), join (miter, round, bevel), miterlimit
 - multi-pass rendering: clipping, masking, object opacity
