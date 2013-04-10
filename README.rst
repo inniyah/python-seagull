@@ -60,6 +60,23 @@ never:
 - DOM API
 
 
+Dependencies
+------------
+
+- PyOpenGL_ 3.0.2+ OpenGL python bindings
+- freetype2_ font engine
+
+.. _PyOpenGL: https://pypi.python.org/pypi/PyOpenGL
+.. _freetype2: http://www.freetype.org/freetype2/
+
+on the mac:
+
+- pyobjc-framework-CoreText_ wrappers for the framework CoreText on Mac OS X
+
+.. _pyobjc-framework-CoreText: https://pypi.python.org/pypi/pyobjc-framework-CoreText/
+
+
+
 Inspirations
 ------------
 
