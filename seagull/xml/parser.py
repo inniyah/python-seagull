@@ -79,7 +79,7 @@ def asciify_key(k):
 	if k == "xlink_href":
 		k = "href"
 	return k
-	
+
 def asciify_keys(d):
 	return dict((asciify_key(k), d[k]) for k in d)
 
@@ -123,31 +123,31 @@ def color(v, elements={}):
 	
 	if hasattr(sg.Color, v): # named color
 		return getattr(sg.Color, v)
-
+	
 	if v.startswith("rgb(") and v.endswith(")"): # rgb
 		rgb = v[len("rgb("):-len(")")]
 		r, g, b = (number(u) for u in rgb.split(","))
 		return sg.Color(r, g, b)
-
+	
 	if v.startswith("#"): # raw color
 		rrggbb = v[len('#'):]
 		if len(rrggbb) == 3:
 			rrggbb = "".join(c*2 for c in rrggbb)
 		rr, gg, bb = rrggbb[:2], rrggbb[2:4], rrggbb[4:]
 		return sg.Color(*(int(u, 16) for u in (rr, gg, bb)))
-
+	
 	if v.startswith("url(#"): # def
 		url = v[len("url(#"):-len(")")]
 		if url in elements:
 			return get_gradient(elements, url)
-
+	
 	sys.stderr.write("unknown color %s\n" % v)
 	return sg.Color.none
 
 
 def matrix(a, b, c, d, e, f, error=1e-6):
 	"""separate translation, rotation, shear and scale"""
-
+	
 	tx, ty = e, f
 	
 	if abs(b*c) < error:
@@ -241,7 +241,6 @@ def path_data(v, _=None):
 		if c not in _PATH_COMMANDS:
 			v.append(c)
 			c = last_c
-		
 		d.append(c)
 		last_c = c
 		if last_c == 'M': last_c = 'L'
@@ -294,6 +293,7 @@ converters = defaultdict(lambda: lambda a, _: ascii(a), {
 	"gradientTransform": transform_list,
 })
 
+
 # gradient ###################################################################
 
 def stop(offset, stop_color="none", stop_opacity=None, **_):
@@ -341,7 +341,7 @@ class Parser(object):
 			sys.stderr.write('undefined mask #%s replaced by none\n' % _id)
 			for masked in self.maskeds[_id]:
 				masked.mask = None
-				
+	
 	def char_data(self, data):
 		self.cdata.append(data)
 	
@@ -355,7 +355,7 @@ class Parser(object):
 		if "id" in attributes:
 			key = "#%s" % attributes["id"]
 			attributes.update(self.styles[key])
-
+		
 		attributes = asciify_keys(attributes)
 		attributes = switify_values(attributes, self.elements)
 		
@@ -390,12 +390,12 @@ class Parser(object):
 			clipPath = attributes['clip_path']
 			if isinstance(clipPath, str):
 				self.clippeds[clipPath].append(elem)
-
+		
 		if "mask" in attributes:
 			mask = attributes['mask']
 			if isinstance(mask, str):
 				self.maskeds[mask].append(elem)
-			
+		
 		if "_id" in attributes:
 			_id = attributes['_id']
 			self.elements[_id] = elem
@@ -419,7 +419,7 @@ class Parser(object):
 		
 		if isinstance(elem, sg.Group):
 			self.groups.append(elem)
-		
+	
 	
 	def end_element(self, name):
 		try:
@@ -429,7 +429,7 @@ class Parser(object):
 		else:
 			handler()
 	
-
+	
 	def close_g(self):
 		return self.groups.pop()
 	close_symbol = close_g
@@ -438,11 +438,11 @@ class Parser(object):
 	
 	def close_clipPath(self):
 		return fix_clip_attributes(self.close_g())
-
+	
 	def close_mask(self):
 		return fix_mask_attributes(self.close_g())
 	
-
+	
 	def open_svg(self, **attributes):
 		self.reset(**attributes)
 	
@@ -493,7 +493,7 @@ class Parser(object):
 		if _href:
 			assert _href.startswith("#")
 			self.gradient_kwargs["parent"] = _href[len("#"):]
-
+		
 		self.elements[self.gradient_id] = (
 			Gradient,
 			[stop(**s) for s in self.gradient_stops] or None,
