@@ -1,6 +1,6 @@
 # -*- coding: utf8 -*-
 
-"""svg serializer"""
+"""svg serialization"""
 
 
 # serialization ##############################################################
