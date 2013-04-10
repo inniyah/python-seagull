@@ -21,9 +21,6 @@ class _Transform(_Context):
 		
 	def exit(self):
 		_gl.PopMatrix()
-	
-	def __repr__(self):
-		return unicode(self).encode('utf-8')
 
 
 class Pixels(_Transform):
@@ -80,10 +77,10 @@ class Translate(_Transform):
 		x, y, z = _translate(x, y, z, -self.tx, -self.ty, -self.tz)
 		return x, y, z
 		
-	def __unicode__(self):
-		return u"translate(" + \
-		       u",".join(str(t) for t in [self.tx, self.ty]) + \
-		       u")"
+	def __str__(self):
+		return "translate(" + \
+		       ",".join(str(t) for t in [self.tx, self.ty]) + \
+		       ")"
 
 
 class Scale(_Transform):
@@ -107,10 +104,10 @@ class Scale(_Transform):
 		x, y, z = _scale(x, y, z, 1./self.sx, 1./self.sy, 1./self.sz)
 		return x, y, z
 
-	def __unicode__(self):
-		return u"scale(" + \
-		       u",".join(str(t) for t in [self.sx, self.sy]) + \
-		       u")"
+	def __str__(self):
+		return "scale(" + \
+		       ",".join(str(t) for t in [self.sx, self.sy]) + \
+		       ")"
 
 	
 class Rotate(_Transform):
@@ -142,11 +139,11 @@ class Rotate(_Transform):
 		x, y, z = _translate(x, y, z, self.cx, self.cy, self.cz)
 		return x, y, z
 
-	def __unicode__(self):
-		return u"rotate(" + \
-		       u",".join(str(t) for t in [self.a,
+	def __str__(self):
+		return "rotate(" + \
+		       ",".join(str(t) for t in [self.a,
 			                              self.cx, self.cy]) + \
-		       u")"
+		       ")"
 
 class SkewX(_Transform):
 	_state_attributes = _Transform._state_attributes + [
@@ -171,8 +168,8 @@ class SkewX(_Transform):
 		x, y, z = _shearx(x, y, z, -self.ax)
 		return x, y, z
 
-	def __unicode__(self):
-		return u"skewX(%s)" % self.ax
+	def __str__(self):
+		return "skewX(%s)" % self.ax
 
 
 class SkewY(_Transform):
@@ -198,8 +195,8 @@ class SkewY(_Transform):
 		x, y, z = _sheary(x, y, z, -self.ay)
 		return x, y, z
 
-	def __unicode__(self):
-		return u"skewY(%s)" % self.ay
+	def __str__(self):
+		return "skewY(%s)" % self.ay
 
 
 class TransformList(list, _Transform):

@@ -13,7 +13,7 @@ from .path import Path
 # polyline ###################################################################
 
 class Polyline(Path):
-	tag = u"polyline"
+	tag = "polyline"
 	
 	points = []
 	

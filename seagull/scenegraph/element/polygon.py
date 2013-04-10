@@ -13,7 +13,7 @@ from .path import Path
 # polygon ####################################################################
 
 class Polygon(Path):
-	tag = u"polygon"
+	tag = "polygon"
 	
 	points = []
 	

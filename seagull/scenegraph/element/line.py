@@ -13,7 +13,7 @@ from .path import Path
 # line #######################################################################
 
 class Line(Path):
-	tag = u"line"
+	tag = "line"
 	
 	fill = None
 	

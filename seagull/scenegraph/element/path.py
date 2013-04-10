@@ -155,7 +155,7 @@ def _join_strips(strips):
 # path #######################################################################
 
 class Path(Element):
-	tag = u"path"
+	tag = "path"
 	
 	_state_attributes = Element._state_attributes + [
 		"d",

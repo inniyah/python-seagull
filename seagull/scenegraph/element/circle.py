@@ -13,7 +13,7 @@ from .path import Path
 # circle #####################################################################
 
 class Circle(Path):
-	tag = u"circle"
+	tag = "circle"
 	
 	cx, cy = 0, 0
 	r = 0

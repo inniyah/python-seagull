@@ -16,7 +16,7 @@ from ._path import _bbox
 _empty_bbox = _bbox([])
 
 class Group(Element):
-	tag = u"g"
+	tag = "g"
 
 	_state_attributes = Element._state_attributes + [
 		"children",
@@ -41,4 +41,4 @@ class Group(Element):
 		return hits
 		
 	def _xml_content(self, defs):
-		return u"\n".join(child._xml(defs) for child in self.children)
+		return "\n".join(child._xml(defs) for child in self.children)

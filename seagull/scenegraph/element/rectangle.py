@@ -13,7 +13,7 @@ from .path import Path
 # rectangle ##################################################################
 
 class Rectangle(Path):
-	tag = u"rect"
+	tag = "rect"
 	
 	width, height = 0, 0
 	rx, ry = None, None

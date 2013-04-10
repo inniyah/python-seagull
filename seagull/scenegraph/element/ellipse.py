@@ -13,7 +13,7 @@ from .path import Path
 # ellipse ####################################################################
 
 class Ellipse(Path):
-	tag = u"ellipse"
+	tag = "ellipse"
 	
 	cx, cy = 0, 0
 	rx, ry = 0, 0

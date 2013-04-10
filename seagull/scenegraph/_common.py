@@ -7,22 +7,22 @@ misc utility functions and classes
 
 # utils ######################################################################
 
-def _indent(s, level=1, tab=u"\t"):
+def _indent(s, level=1, tab="\t"):
 	"""indent blocks"""
 	indent = tab * level
-	return u"\n".join(u"%s%s" % (indent, line) for line in s.split(u"\n"))
+	return "\n".join("%s%s" % (indent, line) for line in s.split("\n"))
 
 
 def _u(v, encoding="utf8"):
 	"""provides a unicode string from anything."""
-	if isinstance(v, unicode):
+	if isinstance(v, str):
 		return v
 	elif isinstance(v, (list, tuple)):
-		return u' '.join(_u(vi, encoding) for vi in v)
+		return " ".join(_u(vi, encoding) for vi in v)
 	elif v is None:
-		return u'none'
+		return "none"
 	else:
-		return unicode(str(v), encoding)
+		return str(v, encoding)
 
 
 # base classes ###############################################################
@@ -51,40 +51,40 @@ class _Element(_Base):
 	
 	def _xml(self, defs):
 		"""xml serialization"""
-		u = u"<%s %s" % (self.tag, self._xml_attributes(defs))
+		u = "<%s %s" % (self.tag, self._xml_attributes(defs))
 		content = self._xml_content(defs)
 		if content.strip():
-			u += u">\n" + \
-			     _indent(content) + u"\n" + \
-			     u"</%s>" % self.tag
+			u += ">\n" + \
+			     _indent(content) + "\n" + \
+			     "</%s>" % self.tag
 		else:
-			u += u"/>"
+			u += "/>"
 		return u
 	
 	def _xml_content(self, defs):
 		"""xml serialization of content"""
-		return u""
+		return ""
 	
 	def _xml_attributes(self, defs):
 		"""xml serialization of attributes"""
-		return u" ".join(self._xml_attribute(name, defs) for name in self.attributes)
+		return " ".join(self._xml_attribute(name, defs) for name in self.attributes)
 	
 	def _xml_attribute(self, name, defs):
 		"""unicode serialization of attribute/value pair"""
 		attribute = getattr(self, name)
-		if name == u"href":
-			name = u"xlink:href"
+		if name == "href":
+			name = "xlink:href"
 			defs.append(attribute)
-			attribute = u"#%s" % attribute.id
+			attribute = "#%s" % attribute.id
 		try:
 			u = attribute._xml_attr(defs)
 		except AttributeError:
 			u = _u(attribute)
-		return u"%s='%s'" % (name.replace(u'_', u'-'), u) if u else u""
+		return "%s='%s'" % (name.replace("_", "-"), u) if u else ""
 	
 	def _xml_attr(self, defs):
 		defs.append(self)
-		return u"url(#%s)" % self.id
+		return "url(#%s)" % self.id
 
 
 class _Context(_Base):

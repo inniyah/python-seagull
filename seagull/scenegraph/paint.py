@@ -330,7 +330,7 @@ class Color(_Paint):
 		"_r", "_g", "_b",
 	]
 	
-	def __init__(self, r=0., g=None, b=None, name=u""):
+	def __init__(self, r=0., g=None, b=None, name=""):
 		self._r = _float(r)
 		self._g = _float(g) if g != None else self._r
 		self._b = _float(b) if b != None else self._r
@@ -341,8 +341,8 @@ class Color(_Paint):
 	
 	def _xml_attr(self, defs):
 		return self._name or \
-		       u"#%02x%02x%02x" % tuple(int(v*_BASE)
-		                                for v in (self._r, self._g, self._b))
+		       "#%02x%02x%02x" % tuple(int(v*_BASE)
+		                               for v in (self._r, self._g, self._b))
 
 
 # texture ####################################################################
@@ -468,18 +468,18 @@ class _Gradient(_Paint):
 	
 	def _xml_content(self, defs):
 		if not "stops" in dir(self):
-			return u""
+			return ""
 		stops = []
 		def _stop(offset, color, opacity=None):
 			return offset, color._xml_attr(defs) if color else "none", opacity
 		for stop in self.stops:
 			offset, color, opacity = _stop(*stop)
 			if opacity is None:
-				stop = u"<stop offset='%s' stop-color='%s' />" % (offset, color)
+				stop = "<stop offset='%s' stop-color='%s' />" % (offset, color)
 			else:
-				stop = u"<stop offset='%s' stop-color='%s' stop-opacity='%s' />" % (offset, color, opacity)
+				stop = "<stop offset='%s' stop-color='%s' stop-opacity='%s' />" % (offset, color, opacity)
 			stops.append(stop)
-		return u"\n".join(stops)
+		return "\n".join(stops)
 
 
 class LinearGradient(_Gradient):
