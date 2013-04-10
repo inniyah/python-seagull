@@ -9,10 +9,7 @@ OpenGL utilities
 from math import floor, ceil
 from ctypes import c_float, c_int
 
-try:
-	from . import opengles as _gl
-except:
-	from . import opengl as _gl
+from . import gl as _gl
 
 
 # helpers ####################################################################

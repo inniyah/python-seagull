@@ -7,7 +7,8 @@ paint servers
 
 # imports ####################################################################
 
-from ..gl_utils import (_gl, create_shader, create_program, set_uniform)
+from ..opengl import gl as _gl
+from ..opengl.utils import (create_shader, create_program, set_uniform)
 from ._common import _Element, _Context
 
 from .transform import TransformList, Translate, Scale

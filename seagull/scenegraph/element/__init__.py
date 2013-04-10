@@ -8,7 +8,7 @@ scenegraph.element
 
 from weakref import WeakValueDictionary as _weakdict
 
-from ...gl_utils import OffscreenContext
+from ...opengl.utils import OffscreenContext
 from .._common import _Element
 from ..paint import Color, _Texture, _MaskContext
 from ..transform import TransformList, Translate, Scale, Pixels

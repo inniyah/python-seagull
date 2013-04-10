@@ -8,7 +8,7 @@ transforms
 
 from math import radians, cos, sin, sqrt, hypot, degrees, atan2, tan
 
-from ..gl_utils import _gl
+from ..opengl import gl as _gl
 from ._common import _Context
 
 

@@ -12,8 +12,8 @@ from math import exp
 from OpenGL.GLUT import *
 
 from seagull import scenegraph as sg
-from seagull.gl_utils import gl_prepare, gl_reshape, gl_display
 from seagull.svg import parse, serialize
+from seagull.opengl.utils import gl_prepare, gl_reshape, gl_display
 
 
 # scene ######################################################################
