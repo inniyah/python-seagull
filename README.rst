@@ -37,7 +37,7 @@ SVG spec
 
 implemented:
 
-- shapes: path, rect, circle, ellipse, line, polyline, polygon
+- shapes: path, rect, circle, ellipse, line, polyline, polygon, image
 - text: no support for skewed text
 - structure: group, use (including attributes inheritance)
 - painting: solid color, linear and radial gradients (including units, transform, spread, href);
@@ -49,7 +49,7 @@ implemented:
 
 eventually:
 
-- shapes: tspan, image
+- tspan
 - painting: pattern
 - stroke: dash, marker
 - filters
@@ -64,9 +64,11 @@ Dependencies
 ------------
 
 - PyOpenGL_ 3.0.2+ OpenGL python bindings
+- Pillow_ 2+ Python Imaging Library (fork)
 - freetype2_ font engine
 
 .. _PyOpenGL: https://pypi.python.org/pypi/PyOpenGL
+.. _Pillow: https://pypi.python.org/pypi/Pillow
 .. _freetype2: http://www.freetype.org/freetype2/
 
 on the mac:

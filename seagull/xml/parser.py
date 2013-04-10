@@ -377,7 +377,7 @@ class Parser(object):
 					"line":     sg.Line,
 					"polyline": sg.Polyline,
 					"polygon":  sg.Polygon,
-#					"image":    sg.Image,
+					"image":    sg.Image,
 				}[name]
 			except KeyError:
 				sys.stderr.write("unhandeled %s element\n" % name)
@@ -457,9 +457,11 @@ class Parser(object):
 	
 	def open_text(self, **attributes):
 		for font_family in reversed(attributes.pop("font_family", "").split(",")):
-			font_family = get_font(font_family.strip())
-			if font_family:
-				attributes["font_family"] = font_family
+			try:
+				attributes["font_family"] = get_font(font_family.strip())
+			except:
+				continue
+			else:
 				break
 		text = sg.Text("", **attributes)
 		self.texts.append(text)
