@@ -13,7 +13,7 @@ from OpenGL.GLUT import *
 
 from seagull import scenegraph as sg
 from seagull.gl_utils import gl_prepare, gl_reshape, gl_display
-from seagull.svg import serialize
+from seagull.svg import parse, serialize
 
 
 # scene ######################################################################
@@ -70,9 +70,18 @@ polygon = sg.Polygon(fill=sg.Color.red, stroke=sg.Color.blue, stroke_width=10,
                              (423,301), (350,250), (277,301), (303,215),
                              (231,161), (321,161)])
 
-group = sg.Group(children=[rectangle, path, arcs,
-                           circle, ellipse, line, polyline, polygon])
 
+if len(sys.argv) == 1:
+	group = sg.Group(children=[rectangle, path, arcs,
+	                           circle, ellipse, line, polyline, polygon])
+else:
+	group = sg.Group()
+	for filename in sys.argv[1:]:
+		document = open(filename).read()
+		old_cwd = os.getcwd()
+		os.chdir(os.path.dirname(filename))
+		group.children.append(parse(document))
+		os.chdir(old_cwd)
 
 scene.children.append(group)
 scene.children.append(sg.Use(group, transform=[sg.Translate(200, 150), sg.Scale(.5), sg.Rotate(60)]))
