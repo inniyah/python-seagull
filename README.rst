@@ -10,7 +10,7 @@ Goals & non-goals
 
 Goals:
 
-- 2d scene graph suitable for interactive rendering
+- 2D scene graph suitable for interactive rendering
 - minimal set of dependencies
 
 
@@ -66,10 +66,18 @@ Dependencies
 - PyOpenGL_ 3.0.2+ OpenGL python bindings
 - Pillow_ 2+ Python Imaging Library (fork)
 - freetype2_ font engine
+- `GNU FreeFont`_ Free UCS Outline Fonts
 
 .. _PyOpenGL: https://pypi.python.org/pypi/PyOpenGL
 .. _Pillow: https://pypi.python.org/pypi/Pillow
 .. _freetype2: http://www.freetype.org/freetype2/
+.. _GNU FreeFont: http://savannah.gnu.org/projects/freefont/
+
+
+Optional dependencies
+---------------------
+
+Needed to find fonts, fallbacks on FreeFont otherwise.
 
 on the mac:
 
