@@ -53,6 +53,13 @@ class Text(Element):
 		self._ws = []
 
 		self.text = text
+		
+		# TODO: handle list of coordinates
+		if isinstance(self.x, list):
+			self.x = self.x[0]
+		if isinstance(self.y, list):
+			self.y = self.y[0]
+		
 	
 	@property
 	def font_family(self):

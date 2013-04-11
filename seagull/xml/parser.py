@@ -7,6 +7,7 @@ svg parser
 # imports ####################################################################
 
 import sys
+import logging
 import xml.parsers.expat
 
 from tempfile import mkstemp
@@ -16,6 +17,11 @@ from collections import defaultdict
 
 from .. import scenegraph as sg
 from ..font.utils import get_font
+
+
+# logging ####################################################################
+
+log = logging.getLogger(__name__)
 
 
 # utils ######################################################################
@@ -120,6 +126,13 @@ def length(v, _=None):
 		v = v[:-2]
 	return u * number(v)
 
+def length_list(v, _=None):
+	v = replace(v, (",", " "))
+	v = list(length(u) for u in v.split())
+	if len(v) == 1:
+		return v[0]
+	return v
+
 def color(v, elements={}):
 	if v == "currentColor":
 		v = "current"
@@ -144,7 +157,7 @@ def color(v, elements={}):
 		if url in elements:
 			return get_gradient(elements, url)
 	
-	sys.stderr.write("unknown color %s\n" % v)
+	log.warning("unknown color %s" % v)
 	return sg.Color.none
 
 
@@ -215,7 +228,7 @@ def href(v, _=None):
 	return ascii(v)
 
 
-_PATH_COMMANDS = 'MLVHCSQTAZmlvhcsqtaz'
+_PATH_COMMANDS = "MLVHCSQTAZmlvhcsqtaz"
 
 def pop1(v):
 	return number(v.pop())
@@ -262,8 +275,8 @@ def point_list(v, _=None):
 
 
 converters = defaultdict(lambda: lambda a, _: ascii(a), {
-	"x":                 length,
-	"y":                 length,
+	"x":                 length_list,
+	"y":                 length_list,
 	"rx":                length,
 	"ry":                length,
 	"x1":                length,
@@ -316,6 +329,7 @@ class Parser(object):
 		self.expat_parser.CharacterDataHandler = self.char_data
 		self.reset()
 	
+	
 	def reset(self, **attributes):
 		self.root = sg.Group(**attributes)
 		self.groups = [self.root]
@@ -333,15 +347,15 @@ class Parser(object):
 	def parse(self, document):
 		self.expat_parser.Parse(document)
 		for _id in self.uses:
-			sys.stderr.write('undefined reference #%s replaced by empty group\n' % _id)
+			log.warning("undefined reference #%s replaced by empty group" % _id)
 			for use in self.uses[_id]:
 				use.element = sg.Group()
 		for _id in self.clippeds:
-			sys.stderr.write('undefined clipPath #%s replaced by none\n' % _id)
+			log.warning("undefined clipPath #%s replaced by none" % _id)
 			for clipped in self.clippeds[_id]:
 				clipped.clip_path = None
 		for _id in self.maskeds:
-			sys.stderr.write('undefined mask #%s replaced by none\n' % _id)
+			log.warning("undefined mask #%s replaced by none" % _id)
 			for masked in self.maskeds[_id]:
 				masked.mask = None
 	
@@ -383,24 +397,24 @@ class Parser(object):
 					"image":    sg.Image,
 				}[name]
 			except KeyError:
-				sys.stderr.write("unhandeled %s element\n" % name)
+				log.warning("unhandeled %s element" % name)
 				return
 		elem = handler(**attributes)
 		if elem is None:
 			return
 		
 		if "clip_path" in attributes:
-			clipPath = attributes['clip_path']
+			clipPath = attributes["clip_path"]
 			if isinstance(clipPath, str):
 				self.clippeds[clipPath].append(elem)
 		
 		if "mask" in attributes:
-			mask = attributes['mask']
+			mask = attributes["mask"]
 			if isinstance(mask, str):
 				self.maskeds[mask].append(elem)
 		
 		if "_id" in attributes:
-			_id = attributes['_id']
+			_id = attributes["_id"]
 			self.elements[_id] = elem
 			for use in self.uses.pop(_id, []):
 				use.element = elem
@@ -488,7 +502,7 @@ class Parser(object):
 	
 	
 	def open_gradient(self, **attributes):
-		self.gradient_id = attributes['_id']
+		self.gradient_id = attributes["_id"]
 		self.gradient_stops = []
 		self.gradient_kwargs = attributes
 	open_linearGradient = open_radialGradient = open_gradient
@@ -564,7 +578,8 @@ def fix_mask_attributes(mask):
 	return mask
 
 
-def parse(document):
+def parse(document, logging_level=logging.ERROR):
+	log.setLevel(logging_level)
 	parser = Parser()
 	parser.parse(document)
 	return parser.root
