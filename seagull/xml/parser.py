@@ -240,7 +240,7 @@ def pop1(v):
 	return number(v.pop())
 def pop2(v):
 	return (pop1(v), pop1(v))
-		
+
 _POPPERS = defaultdict(list, {
 	'M': [pop2],
 	'L': [pop2],
@@ -268,7 +268,7 @@ def path_data(v, _=None):
 		if last_c == 'M': last_c = 'L'
 		if last_c == 'm': last_c = 'l'
 		for popper in _POPPERS[c.upper()]:
-			d.append(popper(v))				
+			d.append(popper(v))
 	return d
 
 def point_list(v, _=None):

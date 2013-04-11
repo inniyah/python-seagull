@@ -4,18 +4,19 @@
 
 from sys import platform as _platform
 
-if _platform == "darwin":
-	from ._cocoa import get_font
-else:
-	raise RuntimeError("unsupported system for fonts: '%s'" % _system)
+try:
+	if _platform == "darwin":
+		from ._cocoa import get_font
+	get_font
+except:
+	from ._fallback import get_font
 
 
 # constants ##################################################################
 
-SERIF_FONT_FAMILY = get_font("Times")
-SANS_FONT_FAMILY  = get_font("Lucida Grande")
-MONO_FONT_FAMILY  = get_font("Monaco")
-
+SERIF_FONT_FAMILY = get_font("serif")
+SANS_FONT_FAMILY  = get_font("sans-serif")
+MONO_FONT_FAMILY  = get_font("mono")
 
 __all__ = [
 	"get_font",

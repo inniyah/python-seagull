@@ -16,16 +16,24 @@ from CoreText import (
 
 _font_collection  = CTFontCollectionCreateFromAvailableFonts({})
 _font_descriptors = CTFontCollectionCreateMatchingFontDescriptors(_font_collection)
-_font_families = dict(
-	(font_descriptor[kCTFontFamilyNameAttribute],
-	 font_descriptor[kCTFontURLAttribute])
-	for font_descriptor in _font_descriptors
-	if font_descriptor[kCTFontStyleNameAttribute] == "Regular"
-)
+
+_FONTS = {
+	font[kCTFontFamilyNameAttribute]: str(font[kCTFontURLAttribute].path())
+	for font in _font_descriptors
+	if font[kCTFontStyleNameAttribute] == "Regular"
+}
+
+_FALLBACKS = {
+	"serif":      "Times",
+	"sans-serif": "Lucida Grande",
+	"mono":       "Monaco",
+}
+
+for _fallback in _FALLBACKS:
+	_FONTS[_fallback] = _FONTS[_FALLBACKS[_fallback]]
 
 
 # utils ######################################################################
 
 def get_font(family):
-	path = _font_families[family].path()
-	return str(path)
+	return _FONTS[family]
