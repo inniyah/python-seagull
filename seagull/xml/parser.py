@@ -97,6 +97,8 @@ _UNITS = {  # http://www.w3.org/TR/SVG/coords.html#Units
 	"px":  1.,
 	"pt":  1.25,
 	"pc": 15,
+	"em": 10,         # TODO: this should be dependant on current font-size
+	"ex":  5,         # TODO: this should be dependant on current x-height
 	"mm":  3.543307,
 	"cm": 35.43307,
 	"in": 90.,
