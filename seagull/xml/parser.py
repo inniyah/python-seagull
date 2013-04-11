@@ -66,13 +66,14 @@ def styles(cdata):
 			while not next(cdata) == "*/":
 				pass
 			token = next(cdata)
-		key = token
-		content = ""
+		while not token.startswith("{"):
+			key = token # TODO: properly implement css selectors
+			token = next(cdata)
+		content = token
 		for token in cdata:
 			content += token
 			if content.endswith("}"):
 				break
-		assert content.startswith("{")
 		styles[key].update(attributify(content[len("{"):-len("}")]))
 	return styles
 
