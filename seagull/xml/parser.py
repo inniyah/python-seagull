@@ -59,13 +59,16 @@ def attributify(style):
 
 def styles(cdata):
 	styles = defaultdict(dict)
-	cdata = replace(cdata, ("{", " {"), ("}", "} "))
+	cdata = replace(cdata, ("{", " { "), ("}", " } "))
 	cdata = iter(cdata.split())
 	for token in cdata:
 		if token == "/*":
 			while not next(cdata) == "*/":
 				pass
-			token = next(cdata)
+			try:
+				token = next(cdata)
+			except:
+				continue
 		while not token.startswith("{"):
 			key = token # TODO: properly implement css selectors
 			token = next(cdata)
@@ -237,7 +240,7 @@ def pop1(v):
 	return number(v.pop())
 def pop2(v):
 	return (pop1(v), pop1(v))
-
+		
 _POPPERS = defaultdict(list, {
 	'M': [pop2],
 	'L': [pop2],
@@ -265,7 +268,7 @@ def path_data(v, _=None):
 		if last_c == 'M': last_c = 'L'
 		if last_c == 'm': last_c = 'l'
 		for popper in _POPPERS[c.upper()]:
-			d.append(popper(v))
+			d.append(popper(v))				
 	return d
 
 def point_list(v, _=None):
@@ -394,6 +397,7 @@ class Parser(object):
 		except AttributeError:
 			try:
 				handler = {
+					"svg":      sg.Group,
 					"g":        sg.Group,
 					"symbol":   sg.Group,
 					"a":        sg.Group,
@@ -465,16 +469,13 @@ class Parser(object):
 	close_symbol = close_g
 	close_a = close_g
 	close_defs = close_g
+	close_svg = close_g
 	
 	def close_clipPath(self):
 		return fix_clip_attributes(self.close_g())
 	
 	def close_mask(self):
 		return fix_mask_attributes(self.close_g())
-	
-	
-	def open_svg(self, **attributes):
-		self.reset(**attributes)
 	
 	
 	def open_style(self, **attributes):
