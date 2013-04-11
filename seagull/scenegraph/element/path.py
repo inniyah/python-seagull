@@ -116,9 +116,13 @@ _SCALE_STEP  = 1.2
 
 def _du2(transforms):
 	"""square of the size of a pixel in local coordinates."""
-	x, y, z = tuple(x-o for o, x in zip(transforms.project(),
-	                                    transforms.project(1.)))
-	return x*x+y*y+z*z
+	try:
+		x, y, z = tuple(x-o for o, x in zip(transforms.project(),
+		                                    transforms.project(1.)))
+	except ZeroDivisionError:
+		return 1.
+	else:
+		return x*x+y*y+z*z
 
 def _scale_index(du2, scale_step=_SCALE_STEP):
 	"""log discretization of the scale suitable as key for hashing cache."""
