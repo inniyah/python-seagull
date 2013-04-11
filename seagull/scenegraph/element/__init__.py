@@ -8,6 +8,7 @@ scenegraph.element
 
 from weakref import WeakValueDictionary as _weakdict
 
+from ...font.utils import SANS_FONT_FAMILY
 from ...opengl.utils import OffscreenContext
 from .._common import _Element
 from ..paint import Color, _Texture, _MaskContext
@@ -58,6 +59,8 @@ _INHERITEDS = {
 	"stroke_linecap":    'butt',
 	"stroke_linejoin":   'miter',
 	"stroke_miterlimit": 4.,
+	"font_family":       SANS_FONT_FAMILY,
+	"font_size":         10,
 	"text_anchor":       'start',
 }
 

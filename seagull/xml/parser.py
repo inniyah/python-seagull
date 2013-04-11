@@ -16,7 +16,7 @@ from math import sqrt, atan2, degrees, hypot
 from collections import defaultdict
 
 from .. import scenegraph as sg
-from ..font.utils import get_font
+from ..font.utils import get_font, SANS_FONT_FAMILY
 
 
 # logging ####################################################################
@@ -274,6 +274,16 @@ def point_list(v, _=None):
 		d.append(pop2(v))
 	return d
 
+def font_family(v, _=None):
+	path = SANS_FONT_FAMILY
+	for font_family in reversed(v.split(",")):
+		try:
+			path = get_font(font_family.strip())
+		except:
+			continue
+		else:
+			break
+	return path
 
 converters = defaultdict(lambda: lambda a, _: ascii(a), {
 	"x":                 length_list,
@@ -299,7 +309,7 @@ converters = defaultdict(lambda: lambda a, _: ascii(a), {
 	"clip_path":         url,
 	"mask":              url,
 	"href":              href,
-	"font_family":       ascii,
+	"font_family":       font_family,
 	"d":                 path_data,
 	"points":            point_list,
 	"cx":                length,
@@ -474,13 +484,6 @@ class Parser(object):
 	
 	
 	def open_text(self, **attributes):
-		for font_family in reversed(attributes.pop("font_family", "").split(",")):
-			try:
-				attributes["font_family"] = get_font(font_family.strip())
-			except:
-				continue
-			else:
-				break
 		text = sg.Text("", **attributes)
 		self.texts.append(text)
 		self.cdata = []

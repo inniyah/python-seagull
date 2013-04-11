@@ -10,7 +10,6 @@ scenegraph.element.text
 from math import hypot, degrees, atan2, modf, log
 
 from ...font import Face
-from ...font.utils import SANS_FONT_FAMILY
 from ...opengl.utils import create_texture
 
 from .._common import _u
@@ -37,18 +36,12 @@ class Text(Element):
 	
 	_VECTOR_L = 30
 	_letters_cache = {}
+	_faces_cache = {}
 	
 	def __init__(self, text,
-	             font_family=SANS_FONT_FAMILY,
-	             font_size=10,
 	             **attributes):
 		super(Text, self).__init__(**attributes)
-		self._font_family = font_family  # read only for now
-		self._font_size = int(font_size) # idem
-		self._attributes.add("font_family")
-		self._attributes.add("font_size")
 
-		self.font_face = Face(self.font_family, self.font_size)
 		self._text_bbox = Rectangle()
 		self._ws = []
 
@@ -59,15 +52,16 @@ class Text(Element):
 			self.x = self.x[0]
 		if isinstance(self.y, list):
 			self.y = self.y[0]
+	
 		
-	
 	@property
-	def font_family(self):
-		return self._font_family
-	
-	@property
-	def font_size(self):
-		return self._font_size
+	def font_face(self):
+		key = (self.font_family, int(self.font_size))
+		try:
+			font_face = self._faces_cache[key]
+		except KeyError:
+			font_face = self._faces_cache[key] = Face(*key)
+		return font_face
 
 	def get_text(self):
 		return _u(self._text)
@@ -103,7 +97,7 @@ class Text(Element):
 		self._ws = [0]
 
 		vector = self.font_size * scale > self._VECTOR_L
-		vector = vector or (self.stroke is not None)
+		vector = vector or (self.stroke is not None) or (self.fill is None)
 		X0, Y0, _ = transforms.unproject(self._anchor())
 		if vector:
 			X, Y = 0., 0.
@@ -117,7 +111,7 @@ class Text(Element):
 				(Xf, Xi), (Yf, Yi) = modf(X), modf(Y)
 				if Xf < 0: Xf, Xi = Xf+1, Xi-1
 				if Yf < 0: Yf, Yi = Yf+1, Yi-1
-			key = (self._font_family, self._font_size, uc,
+			key = (self.font_family, int(self.font_size), uc, vector,
 			       int(round(angle*_ANGLE_STEPS/360.)),
 			       int(log(scale, 2.)*_SCALE_DOUBLE_STEPS),
 			       int(Xf*_SUBPIXEL_STEPS), int(Yf*_SUBPIXEL_STEPS))
