@@ -31,7 +31,7 @@ class Text(Element):
 	tag = "text"
 	
 	_state_attributes = Element._state_attributes + [
-		"font_family", "font_size", "text"
+		"font_family", "font_style", "font_weight", "font_size", "text"
 	]
 	
 	_VECTOR_L = 30
@@ -56,7 +56,8 @@ class Text(Element):
 		
 	@property
 	def font_face(self):
-		key = (self.font_family, int(self.font_size))
+		key = (self.font_family, self.font_style, self.font_weight,
+		       int(self.font_size))
 		try:
 			font_face = self._faces_cache[key]
 		except KeyError:
@@ -111,7 +112,7 @@ class Text(Element):
 				(Xf, Xi), (Yf, Yi) = modf(X), modf(Y)
 				if Xf < 0: Xf, Xi = Xf+1, Xi-1
 				if Yf < 0: Yf, Yi = Yf+1, Yi-1
-			key = (self.font_family, int(self.font_size), uc, vector,
+			key = (self.font_face, uc, vector,
 			       int(round(angle*_ANGLE_STEPS/360.)),
 			       int(log(scale, 2.)*_SCALE_DOUBLE_STEPS),
 			       int(Xf*_SUBPIXEL_STEPS), int(Yf*_SUBPIXEL_STEPS))

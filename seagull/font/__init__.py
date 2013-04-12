@@ -9,6 +9,8 @@ from itertools import chain
 
 from ctypes import byref, string_at
 
+from .utils import get_font
+
 from . import freetype2 as _ft2
 _FT = _ft2.FT
 _library = _ft2._library
@@ -23,10 +25,11 @@ def _cubic(tag): return bool(tag & 2)
 # face #######################################################################
 
 class Face(object):
-	def __init__(self, font_name, px=10):
+	def __init__(self, font_families, font_style, font_weight, px=10):
+		font_name, index = get_font(font_families, font_weight, font_style)
 		self.face = _ft2.Face()
 		self.pen = _ft2.Vector()
-		if _FT.New_Face(_library, font_name.encode(), 0, byref(self.face)) != 0:
+		if _FT.New_Face(_library, font_name.encode(), index, byref(self.face)) != 0:
 			raise ValueError("unable to create '%s' face" % font_name)
 		if px != None:
 			self.set_size(px)
@@ -78,7 +81,7 @@ class Face(object):
 		n = rows * columns
 		data = string_at(bitmap.buffer, n)
 		
-		assert bitmap.pixel_mode == _ft2.PIXEL_MODE_GRAY
+		assert bitmap.pixel_mode == _ft2.PIXEL_MODE_GRAY, bitmap.pixel_mode
 		data = bytes(chain(*([255, 255, 255, c] for c in data)))
 		
 		origin = x, -y
