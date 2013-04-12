@@ -42,7 +42,7 @@ class Text(Element):
 	             **attributes):
 		super(Text, self).__init__(**attributes)
 
-		self._text_bbox = Rectangle()
+		self._text_bbox = Rectangle(fill_opacity=.5)
 		self._ws = []
 
 		self.text = text
@@ -54,6 +54,13 @@ class Text(Element):
 			self.y = self.y[0]
 	
 		
+	def _update_text_bbox(self):
+		(x, y), (width, height) = self.font_face.get_bbox(self.text)
+		self._width = width
+		self._text_bbox.x, self._text_bbox.width  = x, width
+		self._text_bbox.y, self._text_bbox.height = y, height
+		self._text_bbox._paths() # force bbox update
+
 	@property
 	def font_face(self):
 		key = (self.font_family, self.font_weight, self.font_style,
@@ -68,11 +75,6 @@ class Text(Element):
 		return _u(self._text)
 	def set_text(self, text):
 		self._text = text.strip()
-		(x, y), (width, height) = self.font_face.get_bbox(self.text)
-		self._width = width
-		self._text_bbox.x, self._text_bbox.width  = x, width
-		self._text_bbox.y, self._text_bbox.height = y, height
-		self._text_bbox._paths() # force bbox update
 	text = property(get_text, set_text)
 	
 	def _anchor(self):
@@ -83,9 +85,12 @@ class Text(Element):
 		}[self.text_anchor]
 	
 	def _aabbox(self, transforms, inheriteds):
+		self._update_text_bbox()
 		return self._text_bbox.aabbox(transforms + [Translate(self._anchor())], inheriteds)
 	
 	def _render(self, transforms, inheriteds):
+		self._update_text_bbox()
+
 		o  = transforms.project()
 		ux = transforms.project(1, 0, 0)
 		xx, xy, xz = tuple(uxi-oi for oi, uxi in zip(o, ux))
@@ -135,6 +140,7 @@ class Text(Element):
 			Y += dY
 			self._ws.append(hypot(X, Y)/scale)
 		
+		transform = TransformList([Rotate(-angle), Scale(1/scale)])
 		with Pixels(X0, Y0):
 			for letter, translate in letters:
 				letter.fill_opacity = self.fill_opacity
@@ -147,7 +153,7 @@ class Text(Element):
 					letter.stroke_width = self.stroke_width * scale
 				translation = [translate, Translate(letter.x, letter.y)]
 				with TransformList(translation):
-					letter._render(transforms + TransformList([Rotate(-angle), Scale(1/scale)]) + translation, inheriteds)
+					letter._render(transforms + transform + translation, inheriteds)
 	
 	def index(self, x, y=0, z=0):
 		"""index of the char at x (local coordinates)."""
