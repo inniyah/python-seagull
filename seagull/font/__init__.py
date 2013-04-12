@@ -25,7 +25,7 @@ def _cubic(tag): return bool(tag & 2)
 # face #######################################################################
 
 class Face(object):
-	def __init__(self, font_families, font_style, font_weight, px=10):
+	def __init__(self, font_families, font_weight, font_style, px=10):
 		font_name, index = get_font(font_families, font_weight, font_style)
 		self.face = _ft2.Face()
 		self.pen = _ft2.Vector()

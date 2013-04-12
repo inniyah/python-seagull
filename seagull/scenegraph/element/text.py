@@ -31,7 +31,7 @@ class Text(Element):
 	tag = "text"
 	
 	_state_attributes = Element._state_attributes + [
-		"font_family", "font_style", "font_weight", "font_size", "text"
+		"font_family", "font_weight", "font_style", "font_size", "text"
 	]
 	
 	_VECTOR_L = 30
@@ -56,7 +56,7 @@ class Text(Element):
 		
 	@property
 	def font_face(self):
-		key = (self.font_family, self.font_style, self.font_weight,
+		key = (self.font_family, self.font_weight, self.font_style,
 		       int(self.font_size))
 		try:
 			font_face = self._faces_cache[key]

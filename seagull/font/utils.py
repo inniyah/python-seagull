@@ -7,8 +7,14 @@ import os
 from sys import platform as _platform
 
 if _platform == "darwin":
-	from ._cocoa import _get_font
-else:
+	try:
+		from ._cocoa import _get_font
+	except ImportError:
+		pass
+
+try:
+	_get_font
+except NameError:
 	def _get_font(family, bold, italic):
 		raise LookupError
 

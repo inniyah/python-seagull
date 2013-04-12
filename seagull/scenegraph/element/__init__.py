@@ -39,7 +39,7 @@ _ATTRIBUTES = [
 	"fill", "fill_opacity", "fill_rule",
 	"stroke", "stroke_opacity", "stroke_width",
 	"stroke_linecap", "stroke_linejoin", "stroke_miterlimit",
-	"font_family", "font_style", "font_weight", "font_size",
+	"font_family", "font_weight", "font_style", "font_size",
 	"text_anchor",
 	"transform",
 	"clip_path",
@@ -59,8 +59,8 @@ _INHERITEDS = {
 	"stroke_linejoin":   'miter',
 	"stroke_miterlimit": 4.,
 	"font_family":       'sans-serif',
-	"font_style":        'normal',
 	"font_weight":       'normal',
+	"font_style":        'normal',
 	"font_size":         10,
 	"text_anchor":       'start',
 }
