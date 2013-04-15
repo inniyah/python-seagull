@@ -17,6 +17,8 @@ from ..transform import Translate, Rotate, Scale, TransformList, Pixels
 from ..paint import _Texture
 from .rectangle import Rectangle
 from .path import Path
+from .group import Group
+from .use import Use
 from . import Element
 
 
@@ -101,7 +103,7 @@ class Text(Element):
 		c, s = xx*scale, xy*scale
 		angle = degrees(atan2(xy, xx))
 		
-		letters = []
+		letters = Group()
 		self._ws = [0]
 		
 		vector = font_size * scale > self._VECTOR_L
@@ -130,32 +132,23 @@ class Text(Element):
 				font_face.set_transform(c, s, Xf, Yf, scale)
 				if vector:
 					(Xc, Yc), (W, H), (dX, dY), outline = font_face.outline(uc)
-					letter = Path(d=outline, stroke=None)
+					letter = Path(d=outline)
 				else:
 					(Xc, Yc), (W, H), (dX, dY), data = font_face.render(uc)
 					letter = Rectangle(x=Xc, y=Yc, width=W, height=H,
 					                   fill=_Texture(create_texture(W, H, data)))
 				self._letters_cache[key] = letter, (Xc, Yc), (W, H), (dX, dY)
 
-			letters.append((letter, [Translate(Xi, Yi)]))
+			letters.children.append(Use(letter, x=Xi, y=Yi))
 
 			X += dX
 			Y += dY
 			self._ws.append(hypot(X, Y)/scale)
 		
-		transform = TransformList([Rotate(-angle), Scale(1/scale)])
 		with Pixels(X0, Y0):
-			for letter, translate in letters:
-				letter.fill_opacity = self.fill_opacity
-				if isinstance(letter, Rectangle):
-					letter.fill.rgb = self.fill.rgb
-				else:
-					letter.fill = self.fill
-					letter.stroke = self.stroke
-					letter.stroke_opacity = self.stroke_opacity
-					letter.stroke_width = self.stroke_width * scale
-				with TransformList(translate):
-					letter.render(transforms + transform + translate, inheriteds)
+			letters.render(transforms + TransformList([Rotate(-angle),
+			                                           Scale(1/scale)]),
+			               inheriteds)
 	
 	def index(self, x, y=0, z=0):
 		"""index of the char at x (local coordinates)."""
