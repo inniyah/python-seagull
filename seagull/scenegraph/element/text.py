@@ -78,6 +78,7 @@ class Text(Element):
 	text = property(get_text, set_text)
 	
 	def _anchor(self):
+		self._update_text_bbox()
 		return {
 			'start':   0.,
 			'middle': -self._width/2.,
@@ -85,12 +86,13 @@ class Text(Element):
 		}[self.text_anchor]
 	
 	def _aabbox(self, transforms, inheriteds):
-		self._update_text_bbox()
 		return self._text_bbox.aabbox(transforms + [Translate(self._anchor())], inheriteds)
 	
 	def _render(self, transforms, inheriteds):
-		self._update_text_bbox()
-
+		font_size = self.font_size
+		font_face = self.font_face
+		x_anchor = self._anchor()
+		
 		o  = transforms.project()
 		ux = transforms.project(1, 0, 0)
 		xx, xy, xz = tuple(uxi-oi for oi, uxi in zip(o, ux))
@@ -101,10 +103,11 @@ class Text(Element):
 		
 		letters = []
 		self._ws = [0]
-
-		vector = self.font_size * scale > self._VECTOR_L
+		
+		vector = font_size * scale > self._VECTOR_L
 		vector = vector or (self.stroke is not None) or (self.fill is None)
-		X0, Y0, _ = transforms.unproject(self._anchor())
+		X0, Y0, _ = transforms.unproject(x_anchor)
+
 		if vector:
 			X, Y = 0., 0.
 		else:
@@ -117,24 +120,24 @@ class Text(Element):
 				(Xf, Xi), (Yf, Yi) = modf(X), modf(Y)
 				if Xf < 0: Xf, Xi = Xf+1, Xi-1
 				if Yf < 0: Yf, Yi = Yf+1, Yi-1
-			key = (self.font_face, uc, vector,
+			key = (font_face, uc, vector,
 			       int(round(angle*_ANGLE_STEPS/360.)),
 			       int(log(scale, 2.)*_SCALE_DOUBLE_STEPS),
 			       int(Xf*_SUBPIXEL_STEPS), int(Yf*_SUBPIXEL_STEPS))
 			try:
 				letter, (Xc, Yc), (W, H), (dX, dY) = self._letters_cache[key]
 			except KeyError:
-				self.font_face.set_transform(c, s, Xf, Yf, scale)
+				font_face.set_transform(c, s, Xf, Yf, scale)
 				if vector:
-					(Xc, Yc), (W, H), (dX, dY), outline = self.font_face.outline(uc)
+					(Xc, Yc), (W, H), (dX, dY), outline = font_face.outline(uc)
 					letter = Path(d=outline, stroke=None)
 				else:
-					(Xc, Yc), (W, H), (dX, dY), data = self.font_face.render(uc)
+					(Xc, Yc), (W, H), (dX, dY), data = font_face.render(uc)
 					letter = Rectangle(x=Xc, y=Yc, width=W, height=H,
 					                   fill=_Texture(create_texture(W, H, data)))
 				self._letters_cache[key] = letter, (Xc, Yc), (W, H), (dX, dY)
 
-			letters.append((letter, Translate(Xi, Yi)))
+			letters.append((letter, [Translate(Xi, Yi)]))
 
 			X += dX
 			Y += dY
@@ -145,15 +148,14 @@ class Text(Element):
 			for letter, translate in letters:
 				letter.fill_opacity = self.fill_opacity
 				if isinstance(letter, Rectangle):
-					letter.fill._r, letter.fill._g, letter.fill._b = self.fill._r, self.fill._g, self.fill._b
+					letter.fill.rgb = self.fill.rgb
 				else:
 					letter.fill = self.fill
 					letter.stroke = self.stroke
 					letter.stroke_opacity = self.stroke_opacity
 					letter.stroke_width = self.stroke_width * scale
-				translation = [translate, Translate(letter.x, letter.y)]
-				with TransformList(translation):
-					letter._render(transforms + transform + translation, inheriteds)
+				with TransformList(translate):
+					letter.render(transforms + transform + translate, inheriteds)
 	
 	def index(self, x, y=0, z=0):
 		"""index of the char at x (local coordinates)."""
