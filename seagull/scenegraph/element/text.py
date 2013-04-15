@@ -103,18 +103,19 @@ class Text(Element):
 		c, s = xx*scale, xy*scale
 		angle = degrees(atan2(xy, xx))
 		
-		letters = Group()
 		self._ws = [0]
 		
 		vector = font_size * scale > self._VECTOR_L
 		vector = vector or (self.stroke is not None) or (self.fill is None)
+		
 		X0, Y0, _ = transforms.unproject(x_anchor)
-
+		
 		if vector:
 			X, Y = 0., 0.
 		else:
 			(X, X0), (Y, Y0) = modf(X0), modf(Y0)
 		
+		letters = Group()
 		for uc in self.text:
 			if vector:
 				(Xf, Xi), (Yf, Yi) = (0., X), (0., Y)
@@ -149,10 +150,7 @@ class Text(Element):
 			self._ws.append(hypot(X, Y)/scale)
 		
 		with Pixels(X0, Y0):
-			letters.render(transforms + [Translate(self._anchor()),
-			                             Rotate(-angle),
-			                             Scale(1/scale)],
-			               inheriteds)
+			letters.render(TransformList([Translate(X0, Y0)]), inheriteds)
 	
 	def index(self, x, y=0, z=0):
 		"""index of the char at x (local coordinates)."""
