@@ -318,7 +318,13 @@ class _Paint(_Element):
 	_r, _g, _b = 1., 1., 1.
 	units = staticmethod(_UNITS["objectBoundingBox"])
 	transform = []
-
+	
+	def get_rgb(self):
+		return self._r, self._g, self._b
+	def set_rgb(self, rgb):
+		self._r, self._g, self._b = rgb
+	rgb = property(get_rgb, set_rgb)
+	
 	paint_one     = _make_paint(_stencil_one)
 	paint_evenodd = _make_paint(_stencil_evenodd)
 	paint_nonzero = _make_paint(_stencil_nonzero)
@@ -343,16 +349,15 @@ class Color(_Paint):
 	def _xml_attr(self, defs):
 		return self._name or \
 		       "#%02x%02x%02x" % tuple(int(v*_BASE)
-		                               for v in (self._r, self._g, self._b))
+		                               for v in self.rgb)
 
 
 # texture ####################################################################
 
 class _Texture(_Paint):
-	def __init__(self, texture_id=0, color=None):
+	def __init__(self, texture_id=0, color=Color(1., 1., 1.)):
 		self.texture_id = texture_id
-		if color:
-			self._r, self._g, self._b = color._r, color._g, color._b
+		self.rgb = color.rgb
 	
 	def __del__(self):
 		_gl.DeleteTextures([self.texture_id])
