@@ -135,19 +135,23 @@ class Text(Element):
 					letter = Path(d=outline)
 				else:
 					(Xc, Yc), (W, H), (dX, dY), data = font_face.render(uc)
+					mask = Rectangle(x=Xc, y=Yc, width=W, height=H,
+					                 fill=_Texture(create_texture(W, H, data)))
 					letter = Rectangle(x=Xc, y=Yc, width=W, height=H,
-					                   fill=_Texture(create_texture(W, H, data)))
+					                   mask=mask)
 				self._letters_cache[key] = letter, (Xc, Yc), (W, H), (dX, dY)
 
-			letters.children.append(Use(letter, x=Xi, y=Yi))
+			if W > 0 and H > 0:
+				letters.children.append(Use(letter, x=Xi, y=Yi))
 
 			X += dX
 			Y += dY
 			self._ws.append(hypot(X, Y)/scale)
 		
 		with Pixels(X0, Y0):
-			letters.render(transforms + TransformList([Rotate(-angle),
-			                                           Scale(1/scale)]),
+			letters.render(transforms + [Translate(self._anchor()),
+			                             Rotate(-angle),
+			                             Scale(1/scale)],
 			               inheriteds)
 	
 	def index(self, x, y=0, z=0):
