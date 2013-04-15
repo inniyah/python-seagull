@@ -44,7 +44,7 @@ class Text(Element):
 	             **attributes):
 		super(Text, self).__init__(**attributes)
 
-		self._text_bbox = Rectangle(fill_opacity=.5)
+		self._text_bbox = Rectangle()
 		self._ws = []
 
 		self.text = text
@@ -115,7 +115,7 @@ class Text(Element):
 		else:
 			(X, X0), (Y, Y0) = modf(X0), modf(Y0)
 		
-		letters = Group()
+		letters = Group(transform=[Translate(X0, Y0)])
 		for uc in self.text:
 			if vector:
 				(Xf, Xi), (Yf, Yi) = (0., X), (0., Y)
@@ -149,8 +149,8 @@ class Text(Element):
 			Y += dY
 			self._ws.append(hypot(X, Y)/scale)
 		
-		with Pixels(X0, Y0):
-			letters.render(TransformList([Translate(X0, Y0)]), inheriteds)
+		with Pixels():
+			letters.render(inheriteds=inheriteds)
 	
 	def index(self, x, y=0, z=0):
 		"""index of the char at x (local coordinates)."""

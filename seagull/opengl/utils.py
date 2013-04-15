@@ -35,7 +35,7 @@ def gl_reshaper(depth=1, centered=False):
 		_gl.LoadIdentity()
 		_gl.Ortho(0, width, height, 0, -depth, depth)
 		if centered:
-			_gl.Translate(width/2, height/2, 0)
+			_gl.Translate(width//2, height//2, 0)
 	
 		_gl.MatrixMode(_gl.MODELVIEW)
 		_gl.LoadIdentity()

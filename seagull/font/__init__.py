@@ -73,20 +73,17 @@ class Face(object):
 	
 	def render(self, uc):
 		glyph = self._glyph(uc)
-		
 		_FT.Render_Glyph(byref(glyph), _ft2.RENDER_MODE_NORMAL)
-		x, y = glyph.bitmap_left, glyph.bitmap_top
+		
+		origin = glyph.bitmap_left, -glyph.bitmap_top
 		bitmap = glyph.bitmap
-		rows, columns = bitmap.rows, bitmap.pitch
-		n = rows * columns
-		data = string_at(bitmap.buffer, n)
-		
 		assert bitmap.pixel_mode == _ft2.PIXEL_MODE_GRAY, bitmap.pixel_mode
-		data = bytes(chain(*([255, 255, 255, c] for c in data)))
 		
-		origin = x, -y
+		rows, columns = bitmap.rows, bitmap.pitch
 		size = columns, rows
 		offset = glyph.advance.x/64., -glyph.advance.y/64.
+		data = string_at(bitmap.buffer, rows * columns)
+		data = bytes(chain(*([255, 255, 255, c] for c in data)))
 		return origin, size, offset, data
 	
 	

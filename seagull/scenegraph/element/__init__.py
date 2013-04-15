@@ -204,8 +204,9 @@ class Element(_Element):
 				          fill_opacity=self.opacity).render()
 		
 		else:
-			with TransformList(self._transform):
-				self._render(transforms + self._transform, inheriteds)
+			_transform = TransformList(self._transform)
+			with _transform:
+				self._render(transforms + _transform, inheriteds)
 	
 	def _render(self, transforms, inheriteds):
 		raise NotImplementedError
