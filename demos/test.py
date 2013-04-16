@@ -22,10 +22,10 @@ from seagull.opengl.utils import gl_prepare, gl_reshape, gl_display
 
 DEFAULT_PATH = os.path.join(os.path.dirname(__file__), "..", "contribs", "W3C_SVG_11_TestSuite", "svg")
 
-def args(name, current=0, path=DEFAULT_PATH):
-	return name, int(current), path
+def args(name, prefix="", path=DEFAULT_PATH):
+	return name, prefix, path
 try:
-	_, current, test_path = args(*sys.argv)
+	_, prefix, test_path = args(*sys.argv)
 except:
 	raise RuntimeError("missing or too much args")
 
@@ -33,7 +33,8 @@ old_cwd = os.getcwd()
 os.chdir(test_path)
 atexit.register(os.chdir, old_cwd)
 
-filenames = glob.glob("*.svg")
+filenames = glob.glob("%s*.svg" % prefix)
+current = 0
 
 def load(index):
 	global scene, image
