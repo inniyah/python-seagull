@@ -258,6 +258,7 @@ class Path(Element):
 	
 	def _render(self, transforms, inheriteds):
 		du2 = _du2(transforms)
+		origin = self.x, self.y
 		
 		fill = self._color(self.fill)
 		if fill:
@@ -266,7 +267,7 @@ class Path(Element):
 				"nonzero": fill.paint_nonzero,
 				"evenodd": fill.paint_evenodd,
 			}[self.fill_rule]
-			paint(self.fill_opacity, fills, transforms, self._bbox)
+			paint(self.fill_opacity, fills, origin, self._bbox)
 		
 		stroke = self._color(self.stroke)
 		if stroke and self.stroke_width > 0.:
@@ -274,7 +275,7 @@ class Path(Element):
 			opacity = self.stroke_opacity * correction
 			margin = self.stroke_width/2. / correction
 			margin *= max(1., self.stroke_miterlimit)
-			stroke.paint_one(opacity, strokes, transforms, self._bbox, margin+1.)
+			stroke.paint_one(opacity, strokes, origin, self._bbox, margin+1.)
 	
 	
 	def _hit_test(self, x, y, z, transforms):

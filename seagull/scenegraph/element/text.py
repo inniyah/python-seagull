@@ -115,9 +115,17 @@ class Text(Element):
 		else:
 			(X, X0), (Y, Y0) = modf(X0), modf(Y0)
 		
-		letters = Group(transform=[Scale(1/scale), Rotate(angle)],
-		                fill_opacity=1., stroke_opacity=1.,
-		                stroke_width=self.stroke_width * scale)
+		letters = Group(
+			transform=[
+				Translate(self.x-(self._text_bbox.x-self.stroke_width/2.),
+				          self.y-(self._text_bbox.y-self.stroke_width/2.)),
+				Scale(1/scale),
+				Rotate(angle),
+			],
+			fill_opacity=1., stroke_opacity=1.,
+			stroke_width=self.stroke_width * scale
+		)
+		
 		for uc in self.text:
 			if vector:
 				(Xf, Xi), (Yf, Yi) = (0., X), (0., Y)
@@ -149,24 +157,32 @@ class Text(Element):
 			Y += dY
 			self._ws.append(hypot(X, Y)/scale)
 		
-		filler = Rectangle(x=self._text_bbox.x-self.stroke_width/2.,
-		                   y=self._text_bbox.y-self.stroke_width/2.,
-		                   width=self._text_bbox.width+self.stroke_width,
-		                   height=self._text_bbox.height+self.stroke_width,
-		                   mask=letters,
-		                   transform=[Scale(scale), Rotate(-angle)],
-		                   stroke=None)
+		filler = Rectangle(
+			x=self.x, y=self.y,
+			transform=[
+				Scale(scale), Rotate(-angle),
+				Translate(self._text_bbox.x-self.stroke_width/2.-self.x,
+				          self._text_bbox.y-self.stroke_width/2.-self.y),
+			],
+			width=self._text_bbox.width+self.stroke_width,
+			height=self._text_bbox.height+self.stroke_width,
+			mask=letters,
+			stroke=None,
+		)
+		
+		_transforms = transforms + [Translate(x_anchor),
+		                            Scale(1/scale), Rotate(angle)]
 		with Pixels(X0, Y0):
 			if self.fill:
 				letters.fill, letters.stroke = Color.white, None
 				filler.fill = self.fill
 				filler.fill_opacity = self.fill_opacity
-				filler.render(transforms + [Translate(x_anchor), Scale(1/scale), Rotate(angle)], inheriteds)
+				filler.render(_transforms, inheriteds)
 			if self.stroke:
 				letters.fill, letters.stroke = None, Color.white
 				filler.fill = self.stroke
 				filler.fill_opacity = self.stroke_opacity
-				filler.render(transforms + [Translate(x_anchor), Scale(1/scale), Rotate(angle)], inheriteds)
+				filler.render(_transforms, inheriteds)
 	
 	
 	def index(self, x, y=0, z=0):
