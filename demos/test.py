@@ -87,7 +87,7 @@ def keyboard(c, x, y):
 
 glutInit(sys.argv)
 
-glutInitDisplayString(b"rgba stencil double samples=4")
+glutInitDisplayString(b"rgba stencil double samples=8")
 glutInitWindowSize(480*2, 360)
 glutCreateWindow(sys.argv[0].encode())
 

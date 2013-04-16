@@ -93,19 +93,22 @@ class Text(Element):
 	def _render(self, transforms, inheriteds):
 		font_size = self.font_size
 		font_face = self.font_face
+		
 		x_anchor = self._anchor()
+		
+		filler_x, filler_y = self.x, self.y-self._text_bbox.height
+		bbox_x,   bbox_y   = (self._text_bbox.x-self.stroke_width/2.,
+		                      self._text_bbox.y-self.stroke_width/2.)
 		
 		o  = transforms.project()
 		ux = transforms.project(1, 0, 0)
 		xx, xy, xz = tuple(uxi-oi for oi, uxi in zip(o, ux))
 		
-		scale = 1. / hypot(xx, xy)
-		c, s = xx*scale, xy*scale
+		scale = hypot(xx, xy)
+		c, s = xx/scale, xy/scale
 		angle = degrees(atan2(xy, xx))
 		
-		self._ws = [0]
-		
-		vector = font_size * scale > self._VECTOR_L
+		vector = font_size > self._VECTOR_L * scale
 		vector = vector or (self.stroke is not None) or (self.fill is None)
 		
 		X0, Y0, _ = transforms.unproject(x_anchor)
@@ -116,15 +119,12 @@ class Text(Element):
 			(X, X0), (Y, Y0) = modf(X0), modf(Y0)
 		
 		letters = Group(
-			transform=[
-				Translate(self.x-(self._text_bbox.x-self.stroke_width/2.),
-				          self.y-(self._text_bbox.y-self.stroke_width/2.)),
-				Scale(1/scale),
-				Rotate(angle),
-			],
+			transform=[Translate(filler_x-bbox_x, filler_y-bbox_y),
+			           Rotate(angle), Scale(scale)],
 			fill_opacity=1., stroke_opacity=1.,
-			stroke_width=self.stroke_width * scale
+			stroke_width=self.stroke_width/scale
 		)
+		self._ws = [0]
 		
 		for uc in self.text:
 			if vector:
@@ -155,15 +155,12 @@ class Text(Element):
 
 			X += dX
 			Y += dY
-			self._ws.append(hypot(X, Y)/scale)
+			self._ws.append(hypot(X, Y)*scale)
 		
 		filler = Rectangle(
-			x=self.x, y=self.y,
-			transform=[
-				Scale(scale), Rotate(-angle),
-				Translate(self._text_bbox.x-self.stroke_width/2.-self.x,
-				          self._text_bbox.y-self.stroke_width/2.-self.y),
-			],
+			x=filler_x, y=filler_y,
+			transform=[Scale(1/scale), Rotate(-angle),
+			           Translate(bbox_x-filler_x, bbox_y-filler_y)],
 			width=self._text_bbox.width+self.stroke_width,
 			height=self._text_bbox.height+self.stroke_width,
 			mask=letters,
@@ -171,18 +168,16 @@ class Text(Element):
 		)
 		
 		_transforms = transforms + [Translate(x_anchor),
-		                            Scale(1/scale), Rotate(angle)]
+		                            Rotate(angle), Scale(scale)]
 		with Pixels(X0, Y0):
-			if self.fill:
-				letters.fill, letters.stroke = Color.white, None
-				filler.fill = self.fill
-				filler.fill_opacity = self.fill_opacity
-				filler.render(_transforms, inheriteds)
-			if self.stroke:
-				letters.fill, letters.stroke = None, Color.white
-				filler.fill = self.stroke
-				filler.fill_opacity = self.stroke_opacity
-				filler.render(_transforms, inheriteds)
+			for fill, fill_opacity, letters_mask in [
+				(self.fill,   self.fill_opacity,   (Color.white, None)),
+				(self.stroke, self.stroke_opacity, (None, Color.white))
+			]:
+				if fill:
+					filler.fill, filler.fill_opacity = fill, fill_opacity
+					letters.fill, letters.stroke = letters_mask
+					filler.render(_transforms, inheriteds)
 	
 	
 	def index(self, x, y=0, z=0):

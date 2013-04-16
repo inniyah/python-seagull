@@ -22,10 +22,7 @@ _VERT_SHADER = """
 		gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
 		gl_TexCoord[0] = gl_TextureMatrixInverse[0] * gl_Vertex;
 		gl_TexCoord[1] = gl_TextureMatrixInverse[1] * gl_ClipVertex;
-		vec3 N = normalize(gl_NormalMatrix*vec3(0., 0., 1.));
-		vec3 L = normalize(gl_LightSource[0].position.xyz);
-		gl_FrontColor = vec4(gl_Color.rgb * (.6+.4*abs(dot(N, L))),
-		                     gl_Color.a);
+		gl_FrontColor = gl_Color;
 	}
 """
 

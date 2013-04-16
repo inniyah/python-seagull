@@ -46,8 +46,8 @@ class Face(object):
 		_FT.Set_Pixel_Sizes(self.face, 0, px)
 	
 	def set_transform(self, c=1., s=0., dx=0, dy=0, scale=1.):
-		c = int(c * scale * 0x10000)
-		s = int(s * scale * 0x10000)
+		c = int(c/scale * 0x10000)
+		s = int(s/scale * 0x10000)
 		matrix = _ft2.Matrix()
 		matrix.xx, matrix.xy = c, -s
 		matrix.yx, matrix.yy = s,  c
