@@ -14,7 +14,7 @@ from ...opengl.utils import create_texture
 
 from .._common import _u
 from ..transform import Translate, Rotate, Scale, TransformList, Pixels
-from ..paint import _Texture
+from ..paint import _Texture, Color
 from .rectangle import Rectangle
 from .path import Path
 from .group import Group
@@ -115,7 +115,9 @@ class Text(Element):
 		else:
 			(X, X0), (Y, Y0) = modf(X0), modf(Y0)
 		
-		letters = Group(transform=[Translate(X0, Y0)])
+		letters = Group(transform=[Scale(1/scale), Rotate(angle)],
+		                fill_opacity=1., stroke_opacity=1.,
+		                stroke_width=self.stroke_width * scale)
 		for uc in self.text:
 			if vector:
 				(Xf, Xi), (Yf, Yi) = (0., X), (0., Y)
@@ -136,10 +138,8 @@ class Text(Element):
 					letter = Path(d=outline)
 				else:
 					(Xc, Yc), (W, H), (dX, dY), data = font_face.render(uc)
-					mask = Rectangle(x=Xc, y=Yc, width=W, height=H,
-					                 fill=_Texture(create_texture(W, H, data)))
 					letter = Rectangle(x=Xc, y=Yc, width=W, height=H,
-					                   mask=mask)
+					                   fill=_Texture(create_texture(W, H, data)))
 				self._letters_cache[key] = letter, (Xc, Yc), (W, H), (dX, dY)
 
 			if W > 0 and H > 0:
@@ -149,8 +149,25 @@ class Text(Element):
 			Y += dY
 			self._ws.append(hypot(X, Y)/scale)
 		
-		with Pixels():
-			letters.render(inheriteds=inheriteds)
+		filler = Rectangle(x=self._text_bbox.x-self.stroke_width/2.,
+		                   y=self._text_bbox.y-self.stroke_width/2.,
+		                   width=self._text_bbox.width+self.stroke_width,
+		                   height=self._text_bbox.height+self.stroke_width,
+		                   mask=letters,
+		                   transform=[Scale(scale), Rotate(-angle)],
+		                   stroke=None)
+		with Pixels(X0, Y0):
+			if self.fill:
+				letters.fill, letters.stroke = Color.white, None
+				filler.fill = self.fill
+				filler.fill_opacity = self.fill_opacity
+				filler.render(transforms + [Translate(x_anchor), Scale(1/scale), Rotate(angle)], inheriteds)
+			if self.stroke:
+				letters.fill, letters.stroke = None, Color.white
+				filler.fill = self.stroke
+				filler.fill_opacity = self.stroke_opacity
+				filler.render(transforms + [Translate(x_anchor), Scale(1/scale), Rotate(angle)], inheriteds)
+	
 	
 	def index(self, x, y=0, z=0):
 		"""index of the char at x (local coordinates)."""

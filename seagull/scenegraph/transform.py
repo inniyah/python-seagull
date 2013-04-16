@@ -81,6 +81,9 @@ class Translate(_Transform):
 		return "translate(" + \
 		       ",".join(str(t) for t in [self.tx, self.ty]) + \
 		       ")"
+	
+	def inverted(self):
+		return Translate(-self.tx, -self.ty, -self.tz)
 
 
 class Scale(_Transform):
@@ -108,6 +111,9 @@ class Scale(_Transform):
 		return "scale(" + \
 		       ",".join(str(t) for t in [self.sx, self.sy]) + \
 		       ")"
+	
+	def inverted(self):
+		return Scale(1/self.sx, 1/self.sy, 1/self.sz)
 
 	
 class Rotate(_Transform):
@@ -144,6 +150,11 @@ class Rotate(_Transform):
 		       ",".join(str(t) for t in [self.a,
 			                              self.cx, self.cy]) + \
 		       ")"
+	
+	def inverted(self):
+		return Rotate(-self.a, self.cx, self.cy, self.cz,
+		                       self.nx, self.ny, self.nz)
+
 
 class SkewX(_Transform):
 	_state_attributes = _Transform._state_attributes + [
@@ -170,6 +181,9 @@ class SkewX(_Transform):
 
 	def __str__(self):
 		return "skewX(%s)" % self.ax
+	
+	def inverted(self):
+		return SkewX(-self.ax)
 
 
 class SkewY(_Transform):
@@ -197,6 +211,9 @@ class SkewY(_Transform):
 
 	def __str__(self):
 		return "skewY(%s)" % self.ay
+	
+	def inverted(self):
+		return SkewX(-self.ay)
 
 
 class TransformList(list, _Transform):
@@ -223,6 +240,9 @@ class TransformList(list, _Transform):
 		s = hypot(dx, dy)
 		
 		return TransformList([Translate(ox, oy), Rotate(a), Scale(s)])
+	
+	def inverted(self):
+		return TransformList(t.inverted() for t in reversed(self))
 
 	def __add__(self, l):
 		return TransformList(list(self) + l)

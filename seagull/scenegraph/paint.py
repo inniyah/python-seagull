@@ -20,7 +20,7 @@ _VERT_SHADER = """
 	void main() {
 		gl_ClipVertex = gl_ModelViewMatrix * gl_Vertex;
 		gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-		gl_TexCoord[0] = gl_TextureMatrixInverse[0] * gl_Vertex;
+		gl_TexCoord[0] = gl_TextureMatrix[0] * gl_Vertex;
 		gl_TexCoord[1] = gl_TextureMatrixInverse[1] * gl_ClipVertex;
 		vec3 N = normalize(gl_NormalMatrix*vec3(0., 0., 1.));
 		vec3 L = normalize(gl_LightSource[0].position.xyz);
@@ -252,12 +252,13 @@ def _stop(o, c, a=1.):
 
 def _object_bbox(origin, bbox):
 	(x_min, y_min), (x_max, y_max) = bbox
-	return TransformList([Translate(x_min, y_min),
-	                      Scale(x_max-x_min, y_max-y_min)])
+	try:
+		return [Scale(1/(x_max-x_min), 1/(y_max-y_min)), Translate(-x_min, -y_min)]
+	except ZeroDivisionError:
+		return []
 
 def _user_space(origin, bbox):
-	x, y = origin
-	return TransformList([Translate(-x, -y)])
+	return origin
 
 
 _UNITS = {
@@ -304,7 +305,7 @@ def _make_paint(_stencil):
 		_gl.StencilOp(_gl.KEEP, _gl.KEEP, _gl.REPLACE)
 		
 		_gl.MatrixMode(_gl.TEXTURE)
-		with color.units(origin, bbox) + color.transform:
+		with TransformList(color.transform).inverted() + color.units(origin, bbox):
 			(x_min, y_min), (x_max, y_max) = bbox
 			_gl.Rectf(x_min-margin, y_min-margin,
 			          x_max+margin, y_max+margin)
