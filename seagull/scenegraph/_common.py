@@ -74,11 +74,12 @@ class _Element(_Base):
 		if name == "href":
 			name = "xlink:href"
 			try:
-				attribute = "#%s" % attribute.id
+				href = "#%s" % attribute.id
 			except:
 				pass
 			else:
 				defs.append(attribute)
+				attribute = href
 		try:
 			u = attribute._xml_attr(defs)
 		except AttributeError:

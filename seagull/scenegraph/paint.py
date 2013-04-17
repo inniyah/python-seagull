@@ -464,6 +464,8 @@ class _Gradient(_Paint):
 	def attributes(self):
 		attributes = ["id"]
 		attributes += list(k for k in self._DEFAULTS if k in dir(self))
+		if "stops" in attributes:
+			attributes.remove("stops")
 		if self.parent:
 			attributes += ["href"]
 		return attributes
