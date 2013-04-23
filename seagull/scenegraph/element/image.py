@@ -49,6 +49,7 @@ class Image(Rectangle):
 		
 		self.fill = _Texture(create_texture(width, height, data, format),
 		                     self.fill)
+		self._attributes.remove("fill")
 		
 		self._render = super(Image, self)._render
 		self._render(transforms, inheriteds)
