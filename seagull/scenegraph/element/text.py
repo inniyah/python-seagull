@@ -122,7 +122,9 @@ class Text(Element):
 			transform=[Translate(filler_x-bbox_x, filler_y-bbox_y),
 			           Rotate(angle), Scale(scale)],
 			fill_opacity=1., stroke_opacity=1.,
-			stroke_width=self.stroke_width/scale
+			stroke_width=self.stroke_width/scale,
+			stroke_linejoin=self.stroke_linejoin,
+			stroke_linecap=self.stroke_linecap,
 		)
 		self._ws = [0]
 		
