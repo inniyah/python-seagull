@@ -160,7 +160,7 @@ def color(v, elements={}):
 	if v.startswith("url(#"): # def
 		url = v[len("url(#"):-len(")")]
 		if url in elements:
-			return get_gradient(elements, url)
+			return get_pserver(elements, url)
 	
 	log.warning("unknown color %s" % v)
 	return sg.Color.none
@@ -310,6 +310,7 @@ converters = defaultdict(lambda: lambda a, _: ascii(a), {
 	"fx":                length,
 	"fy":                length,
 	"gradientTransform": transform_list,
+	"patternTransform":  transform_list,
 })
 
 
@@ -435,6 +436,8 @@ class Parser(object):
 		elif name == "mask":
 			elem.tag = "mask"
 			self.masks.append(elem)
+		elif name == "pattern":
+			pass
 		else:
 			self.groups[-1].children.append(elem)
 		
@@ -521,27 +524,36 @@ class Parser(object):
 	def open_stop(self, **attributes):
 		self.gradient_stops.append(attributes)
 
+	
+	def open_pattern(self, **attributes):
+		pattern = sg.Group()
+		self.groups.append(pattern)
+		return sg.Pattern(pattern, **attributes)
+	
+	close_pattern = close_g
 
-def get_gradient(elements, _id):
-	gradient = elements[_id]
+
+
+def get_pserver(elements, _id):
+	pserver = elements[_id]
 	
 	try:
-		Gradient, stops, kwargs = gradient
+		Gradient, stops, kwargs = pserver
 	except TypeError:
 		pass
 	else:
 		if "parent" in kwargs:
 			parent_id = kwargs["parent"]
-			parent = get_gradient(elements, parent_id)
+			parent = get_pserver(elements, parent_id)
 			kwargs["parent"] = parent
 		for key in list(kwargs):
-			if key not in ["parent", "stops", "cx", "cy", "r", "fx", "fy",
+			if key not in ["stops", "parent", "cx", "cy", "r", "fx", "fy",
 			               "x1", "y1", "x2", "y2", "spreadMethod",
 			               "gradientUnits", "gradientTransform"]:
 				del kwargs[key]
-		gradient = elements[_id] = Gradient(stops=stops, **kwargs)
+		pserver = elements[_id] = Gradient(stops, **kwargs)
 	
-	return gradient
+	return pserver
 
 def fix_clip_attributes(clip):
 	try:

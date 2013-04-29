@@ -398,50 +398,15 @@ class _MaskContext(_Context):
 		_gl.MatrixMode(_gl.MODELVIEW)
 
 
-# gradients ##################################################################
+# pserver ####################################################################
 
-_SPREADS = {
-	"pad":     0,
-	"reflect": 1,
-	"repeat":  2,
-}
-
-class _Gradient(_Paint):
-	_DEFAULTS = {
-		"gradientTransform": [],
-		"gradientUnits":     "objectBoundingBox",
-		"spreadMethod":      "pad",
-		"stops":             [(0., None)],
-	}
-	
-	_state_attributes = _Paint._state_attributes + list(_DEFAULTS) + [
-		"parent", "stops",
+class _PaintServer(_Paint):
+	_state_attributes = _Paint._state_attributes + [
+		"parent",
 	]
-
-	def __init__(self, parent=None, stops=None, spreadMethod=None,
-	                   gradientUnits=None, gradientTransform=None):
+	
+	def __init__(self, parent=None):
 		self.parent = parent
-		if stops != None: self.stops = stops
-		if spreadMethod != None: self.spreadMethod = spreadMethod
-		if gradientUnits != None: self.gradientUnits = gradientUnits
-		if gradientTransform != None: self.gradientTransform = gradientTransform
-	
-	@property
-	def units(self):
-		return _UNITS[self.gradientUnits]
-	
-	@property
-	def transform(self):
-		return self.gradientTransform
-	
-	def _use_program(self):
-		n = len(self.stops)
-		assert n <= MAX_STOPS, "too much stops in gradient"
-		
-		os, colors = zip(*[_stop(*stop) for stop in self.stops])
-		spread = _SPREADS[self.spreadMethod]
-		self._use_gradient(n, os, colors, spread)
-
 
 	def __getattr__(self, attribute):
 		try:
@@ -450,7 +415,7 @@ class _Gradient(_Paint):
 			pass
 		if attribute in self._DEFAULTS:
 			return self._DEFAULTS[attribute]
-		return super(_Paint, self).__getattr__(attribute)
+		return super(_PaintServer, self).__getattr__(attribute)
 
 	@property
 	def id(self):
@@ -464,10 +429,64 @@ class _Gradient(_Paint):
 	def attributes(self):
 		attributes = ["id"]
 		attributes += list(k for k in self._DEFAULTS if k in dir(self))
-		if "stops" in attributes:
-			attributes.remove("stops")
 		if self.parent:
 			attributes += ["href"]
+		return attributes
+
+
+# gradients ##################################################################
+
+_SPREADS = {
+	"pad":     0,
+	"reflect": 1,
+	"repeat":  2,
+}
+
+class _Gradient(_PaintServer):
+	_DEFAULTS = {
+		"stops":             [(0., None)],
+		"gradientTransform": [],
+		"gradientUnits":     "objectBoundingBox",
+		"spreadMethod":      "pad",
+	}
+	
+	_state_attributes = _PaintServer._state_attributes + list(_DEFAULTS) + [
+		"stops",
+	]
+
+	def __init__(self, stops=None, parent=None, spreadMethod=None,
+	                   gradientUnits=None, gradientTransform=None):
+		if stops != None: self.stops = stops
+		super(_Gradient, self).__init__(parent)
+		if spreadMethod != None: self.spreadMethod = spreadMethod
+		if gradientUnits != None: self.gradientUnits = gradientUnits
+		if gradientTransform != None: self.gradientTransform = gradientTransform
+	
+	@property
+	def units(self):
+		return _UNITS[self.gradientUnits]
+	
+	@property
+	def transform(self):
+		return self.gradientTransform
+	
+	def _use_gradient(self, n, os, colors, spread):
+		raise NotImplementedError
+	
+	def _use_program(self):
+		n = len(self.stops)
+		assert n <= MAX_STOPS, "too much stops in gradient"
+		
+		os, colors = zip(*[_stop(*stop) for stop in self.stops])
+		spread = _SPREADS[self.spreadMethod]
+		self._use_gradient(n, os, colors, spread)
+
+
+	@property
+	def attributes(self):
+		attributes = super(_Gradient, self).attribtues
+		if "stops" in attributes:
+			attributes.remove("stops")
 		return attributes
 	
 	def _xml_content(self, defs):
@@ -499,10 +518,10 @@ class LinearGradient(_Gradient):
 
 	_DEFAULTS.update(_Gradient._DEFAULTS)
 	
-	def __init__(self, parent=None, stops=None, spreadMethod=None,
+	def __init__(self, stops=None, parent=None, spreadMethod=None,
 	                   gradientUnits=None, gradientTransform=None,
 	                   x1=None, y1=None, x2=None, y2=None):
-		super(LinearGradient, self).__init__(parent, stops, spreadMethod,
+		super(LinearGradient, self).__init__(stops, parent, spreadMethod,
 		                                     gradientUnits, gradientTransform)
 		if x1 != None: self.x1 = x1
 		if y1 != None: self.y1 = y1
@@ -530,10 +549,10 @@ class RadialGradient(_Gradient):
 
 	_DEFAULTS.update(_Gradient._DEFAULTS)
 	
-	def __init__(self, parent=None, stops=None, spreadMethod=None,
+	def __init__(self, stops=None, parent=None, spreadMethod=None,
 	                   gradientUnits=None, gradientTransform=None,
 	                   cx=None, cy=None, r=None, fx=None, fy=None):
-		super(RadialGradient, self).__init__(parent, stops, spreadMethod,
+		super(RadialGradient, self).__init__(stops, parent, spreadMethod,
 		                                     gradientUnits, gradientTransform)
 		if cx != None: self.cx = cx
 		if cy != None: self.cy = cy
@@ -551,6 +570,44 @@ class RadialGradient(_Gradient):
 		                     f=[(float(fx), float(fy))],
 		                     n=[n], os=list(os), colors=list(colors),
 		                     spread=[spread])
+
+
+# pattern ####################################################################
+
+class Pattern(_PaintServer):
+	tag = "pattern"
+
+	_DEFAULTS = {
+		"patternTransform": [],
+		"patternUnits":     "objectBoundingBox",
+		"x": 0.,
+		"y": 0.,
+		"width": 0.,
+		"height": 0.,
+	}
+	
+	_state_attributes = _Paint._state_attributes + list(_DEFAULTS) + [
+		"pattern",
+	]
+	
+	def __init__(self, pattern=None, parent=None,
+	                   x=None, y=None, width=None, height=None,
+	                   patternUnits=None, patternTransform=None,
+	                   **kwargs):
+		self.pattern = pattern
+		super(Pattern, self).__init__(parent)
+		if x != None: self.x = x
+		if y != None: self.y = y
+		if width != None: self.width = width
+		if height != None: self.height = height
+		if patternUnits != None: self.patternUnits = patternUnits
+		if patternTransform != None: self.patternTransform = patternTransform
+	
+	def _use_program(self):
+		_use_solid_color()
+	
+	def _xml_content(self, defs):
+		return self.pattern._xml_content(defs)
 
 
 # colors by name #############################################################
