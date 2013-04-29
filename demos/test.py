@@ -39,15 +39,23 @@ current = 0
 def load(index):
 	global scene, image
 	filename = filenames[index]
-	t = "[%3i/%i] %s" % (index+1, len(filenames), filename)
+	t = "[%3i+1/%i] %s" % (index, len(filenames), filename)
 	glutSetWindowTitle(t.encode())
 	print(t)
 	try:
-		scene = parse(open(filename).read())
+		svg = parse(open(filename).read())
 	except:
 		traceback.print_exception(*sys.exc_info())
-		scene = sg.Group()
+		svg = sg.Group()
 	image = sg.Image("../png/%s.png" % filename[:-4], x=480)
+	scene = sg.Group(
+		children=[svg, image],
+	)
+	
+	(x_min, y_min), (x_max, y_max) = scene.aabbox()
+	glutReshapeWindow(int(x_max), int(y_max))
+
+
 	
 def goto(index):
 	global current
@@ -64,7 +72,7 @@ def prev_file():
 # glut callbacks #############################################################
 
 def display():
-	gl_display(scene, image)
+	gl_display(scene)
 	glutSwapBuffers()
 
 
@@ -87,8 +95,7 @@ def keyboard(c, x, y):
 
 glutInit(sys.argv)
 
-glutInitDisplayString(b"rgba stencil double samples=8")
-glutInitWindowSize(480*2, 360)
+glutInitDisplayString(b"rgba stencil double samples=8 hidpi")
 glutCreateWindow(sys.argv[0].encode())
 
 glutReshapeFunc(gl_reshape)
