@@ -128,7 +128,11 @@ class Text(Element):
 		)
 		self._ws = [0]
 		
+		up = ' '
 		for uc in self.text:
+			X += font_face.get_hkerning(up, uc)
+			up = uc
+			
 			if vector:
 				(Xf, Xi), (Yf, Yi) = (0., X), (0., Y)
 			else:

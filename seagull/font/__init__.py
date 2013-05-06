@@ -31,6 +31,7 @@ class Face(object):
 		self.pen = _ft2.Vector()
 		if _FT.New_Face(_library, font_name.encode(), index, byref(self.face)) != 0:
 			raise ValueError("unable to create '%s' face" % font_name)
+		_FT.Select_Charmap(self.face, _ft2.ENCODING_UNICODE)
 		if px != None:
 			self.set_size(px)
 		self._FT = _FT # keep a ref for finalizer
@@ -60,16 +61,31 @@ class Face(object):
 		_FT.Load_Glyph(self.face, glyph_index, _ft2.LOAD_DEFAULT)
 		return self.face.contents.glyph.contents
 	
+	def get_hkerning(self, ucl, ucr):
+		left_glyph = _FT.Get_Char_Index(self.face, ord(ucl))
+		right_glyph = _FT.Get_Char_Index(self.face, ord(ucr))
+		kerning = _ft2.Vector()
+		_FT.Get_Kerning(self.face, left_glyph, right_glyph,
+		                _ft2.KERNING_DEFAULT, byref(kerning))
+		return kerning.x/64.
+	
+	
 	def get_bbox(self, text):
 		self.set_transform()
 		width = 0
 		top, bottom = 0, 0
+		up = ' '
 		for uc in text:
+			width += self.get_hkerning(up, uc)
+			up = uc
+			
 			glyph = self._glyph(uc)
-			width += glyph.metrics.horiAdvance
-			top = max(top, glyph.metrics.horiBearingY)
-			bottom = min(bottom, glyph.metrics.horiBearingY - glyph.metrics.height)
-		return (0., -top/64.), (width/64., (top-bottom)/64.)
+			width += glyph.metrics.horiAdvance/64.
+			top = max(top, glyph.metrics.horiBearingY/64.)
+			bottom = min(bottom, (glyph.metrics.horiBearingY -
+			                      glyph.metrics.height)/64.)
+		return (0., -top), (width, top-bottom)
+	
 	
 	def render(self, uc):
 		glyph = self._glyph(uc)

@@ -233,21 +233,31 @@ LOAD_IGNORE_TRANSFORM =            0x800
 LOAD_MONOCHROME =                  0x1000
 LOAD_LINEAR_DESIGN =               0x2000
 
-[PIXEL_MODE_NONE,
- PIXEL_MODE_MONO,
- PIXEL_MODE_GRAY,
- PIXEL_MODE_GRAY2,
- PIXEL_MODE_GRAY4,
- PIXEL_MODE_LCD,
- PIXEL_MODE_LCD_V,
- PIXEL_MODE_MAX] = [bytes([i]) for i in range(8)]
+[
+	PIXEL_MODE_NONE,
+	PIXEL_MODE_MONO,
+	PIXEL_MODE_GRAY,
+	PIXEL_MODE_GRAY2,
+	PIXEL_MODE_GRAY4,
+	PIXEL_MODE_LCD,
+	PIXEL_MODE_LCD_V,
+	PIXEL_MODE_MAX
+] = [bytes([i]) for i in range(8)]
 
-[RENDER_MODE_NORMAL,
- RENDER_MODE_LIGHT,
- RENDER_MODE_MONO,
- RENDER_MODE_LCD,
- RENDER_MODE_LCD_V,
- RENDER_MODE_MAX] = range(6)
+[
+	RENDER_MODE_NORMAL,
+	RENDER_MODE_LIGHT,
+	RENDER_MODE_MONO,
+	RENDER_MODE_LCD,
+	RENDER_MODE_LCD_V,
+	RENDER_MODE_MAX
+] = range(6)
+
+[
+	KERNING_DEFAULT,
+	KERNING_UNFITTED,
+	KERNING_UNSCALED,
+] = range(3)
 
 def LOAD_TARGET_(x):
 	return ((x) & 15) << 16
@@ -257,6 +267,15 @@ LOAD_TARGET_LIGHT  = LOAD_TARGET_(RENDER_MODE_LIGHT  )
 LOAD_TARGET_MONO   = LOAD_TARGET_(RENDER_MODE_MONO   )
 LOAD_TARGET_LCD    = LOAD_TARGET_(RENDER_MODE_LCD    )
 LOAD_TARGET_LCD_V  = LOAD_TARGET_(RENDER_MODE_LCD_V  )
+
+def ENC_TAG(s):
+	a, b, c, d = s
+	return (ord(a) << 24 |
+	        ord(b) << 16 |
+	        ord(c) <<  8 |
+	        ord(d))
+
+ENCODING_UNICODE = ENC_TAG("unic")
 
 
 # initialisation #############################################################
