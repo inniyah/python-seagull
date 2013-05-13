@@ -298,7 +298,7 @@ def _triangle_strip_hits(strip, x, y):
 		p0, p1 = p1, p2
 		s0, s = s1, -s
 
-def _evenodd_hit(x, y, z, fills):
+def _evenodd_hit(x, y, fills):
 	"""even/odd hit test on interior of a path."""
 	in_count = 0
 	for hit, _ in _triangle_strip_hits(fills, x, y):
@@ -306,7 +306,7 @@ def _evenodd_hit(x, y, z, fills):
 			in_count += 1
 	return (in_count % 2) == 1
 
-def _nonzero_hit(x, y, z, fills):
+def _nonzero_hit(x, y, fills):
 	"""non-zero hit test on interior of a path."""
 	in_count = 0
 	for hit, positive in _triangle_strip_hits(fills, x, y):
@@ -317,7 +317,7 @@ def _nonzero_hit(x, y, z, fills):
 				in_count -= 1
 	return in_count != 0
 
-def _stroke_hit(x, y, z, strokes):
+def _stroke_hit(x, y, strokes):
 	"""hit test on stroke of a path."""
 	for hit, _ in _triangle_strip_hits(strokes, x, y):
 		if hit:

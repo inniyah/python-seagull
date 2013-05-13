@@ -166,37 +166,6 @@ def color(v, elements={}):
 	return sg.Color.none
 
 
-def matrix(a, b, c, d, e, f, error=1e-6):
-	"""separate translation, rotation, shear and scale"""
-	
-	tx, ty = e, f
-	
-	if abs(b*c) < error:
-		cosa, sina = 1., 0.
-		sx, hy = a, b
-		hx, sy = c, d
-	else:
-		sign = 1. if a*d>b*c else -1.
-		cosa, sina = a+sign*d, b-sign*c
-		sx, hy = a*cosa + b*sina, b*cosa - a*sina
-		hx, sy = c*cosa + d*sina, d*cosa - c*sina
-		sx -= hx*hy/sy
-	h = hypot(cosa, sina)
-	
-	transforms = sg.TransformList()
-	if (tx, ty) != (0., 0.):
-		transforms.append(sg.Translate(tx, ty))
-	if abs(sina) > abs(cosa)*error:
-		transforms.append(sg.Rotate(degrees(atan2(sina, cosa))))
-	if abs(hx) > abs(sy)*error:
-		transforms.append(sg.SkewX(degrees(atan2(hx, sy))))
-	if abs(hy) > abs(sx)*error:
-		transforms.append(sg.SkewY(degrees(atan2(hy, sx))))
-	if (sx, sy) != (h, h):
-		transforms.append(sg.Scale(sx/h, sy/h))
-	
-	return transforms
-
 def transform(v):
 	transform, v = v.split("(")
 	Transform = {
@@ -205,7 +174,7 @@ def transform(v):
 		"scale":     sg.Scale,
 		"skewX":     sg.SkewX,
 		"skewY":     sg.SkewY,
-		"matrix":    matrix,
+		"matrix":    sg.TransformList.from_matrix,
 	}[transform]
 	return Transform(*(number(u) for u in v.split()))
 

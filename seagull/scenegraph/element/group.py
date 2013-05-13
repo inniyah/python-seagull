@@ -34,10 +34,10 @@ class Group(Element):
 		for child in self.children:
 			child.render(transforms, inheriteds)
 					
-	def _pick_content(self, x, y, z, transforms):
+	def _pick_content(self, x, y, transforms):
 		hits = []
 		for child in self.children:
-			hits += child.pick(x, y, z, transforms)
+			hits += child.pick(x, y, transforms)
 		return hits
 		
 	def _xml_content(self, defs):

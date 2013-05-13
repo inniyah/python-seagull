@@ -101,8 +101,8 @@ class Text(Element):
 		                      self._text_bbox.y-self.stroke_width/2.)
 		
 		o  = transforms.project()
-		ux = transforms.project(1, 0, 0)
-		xx, xy, xz = tuple(uxi-oi for oi, uxi in zip(o, ux))
+		ux = transforms.project(1, 0)
+		xx, xy = tuple(uxi-oi for oi, uxi in zip(o, ux))
 		
 		scale = hypot(xx, xy)
 		c, s = xx/scale, xy/scale
@@ -111,7 +111,7 @@ class Text(Element):
 		vector = font_size > self._VECTOR_L * scale
 		vector = vector or (self.stroke is not None) or (self.fill is None)
 		
-		X0, Y0, _ = transforms.unproject(x_anchor)
+		X0, Y0 = transforms.unproject(x_anchor)
 		
 		if vector:
 			X, Y = 0., 0.
@@ -186,16 +186,16 @@ class Text(Element):
 					filler.render(_transforms, inheriteds)
 	
 	
-	def index(self, x, y=0, z=0):
+	def index(self, x, y=0):
 		"""index of the char at x (local coordinates)."""
 		for i, w in enumerate(self._ws):
 			if x < w: break
 		return i-1
 	
 	
-	def _hit_test(self, x, y, z, transforms):
-		x, y, z = self._text_bbox.project(x, y, z)
-		return self._text_bbox._hit_test(x, y, z, transforms)
+	def _hit_test(self, x, y, transforms):
+		x, y = self._text_bbox.project(x, y)
+		return self._text_bbox._hit_test(x, y, transforms)
 	
 	def _xml_content(self, defs):
 		return self.text

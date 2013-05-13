@@ -135,8 +135,8 @@ class Element(_Element):
 			transform = self.transform + [Translate(self.x, self.y)]
 		return transform
 	
-	def project(self, x=0, y=0, z=0):
-		return self._transform.project(x, y, z)
+	def project(self, x=0, y=0):
+		return self._transform.project(x, y)
 	
 	
 	# axis-aligned bounding box
@@ -214,17 +214,17 @@ class Element(_Element):
 	
 	# picking 
 	
-	def _hit_test(self, x, y, z, transforms):
+	def _hit_test(self, x, y, transforms):
 		return False
 	
-	def pick(self, x=0, y=0, z=0, transforms=TransformList()):
-		p = x, y, z = self.project(x, y, z)
+	def pick(self, x=0, y=0, transforms=TransformList()):
+		p = x, y = self.project(x, y)
 		transforms = transforms + self._transform
-		hits = [([self], p)] if self._hit_test(x, y, z, transforms) else []
-		hits += [([self] + e, p) for e, p in self._pick_content(x, y, z, transforms)]
+		hits = [([self], p)] if self._hit_test(x, y, transforms) else []
+		hits += [([self] + e, p) for e, p in self._pick_content(x, y, transforms)]
 		return hits
 		
-	def _pick_content(self, x, y, z, transforms):
+	def _pick_content(self, x, y, transforms):
 		return []
 
 

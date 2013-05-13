@@ -576,6 +576,7 @@ class RadialGradient(_Gradient):
 
 class Pattern(_PaintServer):
 	tag = "pattern"
+	_r, _g, _b = .5, .5, .5
 
 	_DEFAULTS = {
 		"patternTransform": [],

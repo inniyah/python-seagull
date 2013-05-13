@@ -9,6 +9,10 @@ import sys
 
 from math import exp
 
+import OpenGL
+OpenGL.ERROR_CHECKING = False
+OpenGL.ERROR_LOGGING = False
+
 from OpenGL.GLUT import *
 
 from seagull import scenegraph as sg
@@ -27,8 +31,14 @@ old_cwd = os.getcwd()
 path, filename = os.path.split(filename)
 if path:
 	os.chdir(path)
-with open(filename) as f:
-	scene = parse(f.read())
+if filename.endswith('z'):
+	import gzip
+	f = gzip.open(filename)
+else:
+	f = open(filename)
+scene = parse(f.read())
+f.close()
+
 os.chdir(old_cwd)
 
 (x_min, y_min), (x_max, y_max) = scene.aabbox()
@@ -50,9 +60,9 @@ def pick(x, y):
 		return path
 	return [scene]
 
-def project(path, x, y, z=0):
+def project(path, x, y):
 	for elem in path:
-		x, y, z = elem.project(x, y, z)
+		x, y = elem.project(x, y)
 	return x, y
 
 

@@ -34,5 +34,5 @@ class Use(Element):
 	def _render(self, transforms, inheriteds):
 		self.element.render(transforms, inheriteds)
 
-	def _pick_content(self, x, y, z, transforms):
-		return self.element.pick(x, y, z, transforms)
+	def _pick_content(self, x, y, transforms):
+		return self.element.pick(x, y, transforms)

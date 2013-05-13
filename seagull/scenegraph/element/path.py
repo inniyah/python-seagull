@@ -117,12 +117,12 @@ _SCALE_STEP  = 1.2
 def _du2(transforms):
 	"""square of the size of a pixel in local coordinates."""
 	try:
-		x, y, z = tuple(x-o for o, x in zip(transforms.project(),
-		                                    transforms.project(1.)))
+		x, y = tuple(x-o for o, x in zip(transforms.project(),
+		                                 transforms.project(1.)))
 	except ZeroDivisionError:
 		return 1.
 	else:
-		return x*x+y*y+z*z
+		return x*x+y*y
 
 def _scale_index(du2, scale_step=_SCALE_STEP):
 	"""log discretization of the scale suitable as key for hashing cache."""
@@ -278,7 +278,7 @@ class Path(Element):
 			stroke.paint_one(opacity, strokes, origin, self._bbox, margin+1.)
 	
 	
-	def _hit_test(self, x, y, z, transforms):
+	def _hit_test(self, x, y, transforms):
 		du2 = _du2(transforms)
 
 		if self.fill:
@@ -290,13 +290,13 @@ class Path(Element):
 						"nonzero": _nonzero_hit,
 						"evenodd": _evenodd_hit,
 					}[self.fill_rule]
-					if fill_hit(x, y, z, fills):
+					if fill_hit(x, y, fills):
 						return True
 
 		if self.stroke and self.stroke_width > 0.:
 			(_, strokes), _ = self._strokes(du2)
 			if strokes:
-				if _stroke_hit(x, y, z, strokes):
+				if _stroke_hit(x, y, strokes):
 					return True
 		
 		return False
