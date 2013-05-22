@@ -415,7 +415,7 @@ class _PaintServer(_Paint):
 			pass
 		if attribute in self._DEFAULTS:
 			return self._DEFAULTS[attribute]
-		return super(_PaintServer, self).__getattr__(attribute)
+		return super(_PaintServer, self).__getattribute__(attribute)
 
 	@property
 	def id(self):
@@ -484,7 +484,7 @@ class _Gradient(_PaintServer):
 
 	@property
 	def attributes(self):
-		attributes = super(_Gradient, self).attribtues
+		attributes = super(_Gradient, self).attributes
 		if "stops" in attributes:
 			attributes.remove("stops")
 		return attributes
