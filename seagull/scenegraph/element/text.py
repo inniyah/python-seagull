@@ -100,15 +100,12 @@ class Text(Element):
 		bbox_x,   bbox_y   = (self._text_bbox.x-self.stroke_width/2.,
 		                      self._text_bbox.y-self.stroke_width/2.)
 		
-		o  = transforms.project()
-		ux = transforms.project(1, 0)
-		xx, xy = tuple(uxi-oi for oi, uxi in zip(o, ux))
-		
-		scale = hypot(xx, xy)
-		c, s = xx/scale, xy/scale
-		angle = degrees(atan2(xy, xx))
-		
-		vector = font_size > self._VECTOR_L * scale
+		a, b, c, d, _, _ = transforms.matrix()
+		c, d = -b, a # TODO: handle non orthogonal transformations
+		scale = hypot(a, b)
+		angle = degrees(atan2(b, a))
+
+		vector = font_size * scale > self._VECTOR_L
 		vector = vector or (self.stroke is not None) or (self.fill is None)
 		
 		X0, Y0 = transforms.unproject(x_anchor)
@@ -120,9 +117,9 @@ class Text(Element):
 		
 		letters = Group(
 			transform=[Translate(filler_x-bbox_x, filler_y-bbox_y),
-			           Rotate(angle), Scale(scale)],
+			           Rotate(-angle), Scale(1/scale)],
 			fill_opacity=1., stroke_opacity=1.,
-			stroke_width=self.stroke_width/scale,
+			stroke_width=self.stroke_width*scale,
 			stroke_linejoin=self.stroke_linejoin,
 			stroke_linecap=self.stroke_linecap,
 		)
@@ -146,12 +143,12 @@ class Text(Element):
 			try:
 				letter, (Xc, Yc), (W, H), (dX, dY) = self._letters_cache[key]
 			except KeyError:
-				font_face.set_transform(c, s, Xf, Yf, scale)
+				font_face.set_transform(a, b, c, d, Xf, Yf)
 				if vector:
 					(Xc, Yc), (W, H), (dX, dY), outline = font_face.outline(uc)
 					letter = Path(d=outline)
 				else:
-					(Xc, Yc), (W, H), (dX, dY), data = font_face.render(uc)
+					(Xc, Yc), (W, H), (dX, dY), data = font_face.bitmap(uc)
 					letter = Rectangle(x=Xc, y=Yc, width=W, height=H,
 					                   fill=_Texture(create_texture(W, H, data)))
 				self._letters_cache[key] = letter, (Xc, Yc), (W, H), (dX, dY)
@@ -161,11 +158,11 @@ class Text(Element):
 
 			X += dX
 			Y += dY
-			self._ws.append(hypot(X, Y)*scale)
+			self._ws.append(hypot(X, Y)/scale)
 		
 		filler = Rectangle(
 			x=filler_x, y=filler_y,
-			transform=[Scale(1/scale), Rotate(-angle),
+			transform=[Scale(scale), Rotate(angle),
 			           Translate(bbox_x-filler_x, bbox_y-filler_y)],
 			width=self._text_bbox.width+self.stroke_width,
 			height=self._text_bbox.height+self.stroke_width,
@@ -174,7 +171,7 @@ class Text(Element):
 		)
 		
 		_transforms = transforms + [Translate(x_anchor),
-		                            Rotate(angle), Scale(scale)]
+		                            Rotate(-angle), Scale(1/scale)]
 		with Pixels(X0, Y0):
 			for fill, fill_opacity, letters_mask in [
 				(self.fill,   self.fill_opacity,   (Color.white, None)),

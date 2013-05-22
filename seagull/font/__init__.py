@@ -46,14 +46,12 @@ class Face(object):
 	def set_size(self, px):
 		_FT.Set_Pixel_Sizes(self.face, 0, px)
 	
-	def set_transform(self, c=1., s=0., dx=0, dy=0, scale=1.):
-		c = int(c/scale * 0x10000)
-		s = int(s/scale * 0x10000)
+	def set_transform(self, a=1., b=0., c=0., d=1., e=0., f=0.):
 		matrix = _ft2.Matrix()
-		matrix.xx, matrix.xy = c, -s
-		matrix.yx, matrix.yy = s,  c
-		self.pen.x = int( dx * 64)
-		self.pen.y = int(-dy * 64)
+		matrix.xx, matrix.xy = int(a * 0x10000), int(b * 0x10000)
+		matrix.yx, matrix.yy = int(c * 0x10000), int(d * 0x10000)
+		self.pen.x = int(e * 64)
+		self.pen.y = int(-f * 64)
 		_FT.Set_Transform(self.face, byref(matrix), byref(self.pen))
 	
 	def _glyph(self, uc):
@@ -71,7 +69,6 @@ class Face(object):
 	
 	
 	def get_bbox(self, text):
-		self.set_transform()
 		width = 0
 		top, bottom = 0, 0
 		up = ' '
@@ -84,10 +81,12 @@ class Face(object):
 			top = max(top, glyph.metrics.horiBearingY/64.)
 			bottom = min(bottom, (glyph.metrics.horiBearingY -
 			                      glyph.metrics.height)/64.)
+		width += (glyph.metrics.horiBearingX + glyph.metrics.width -
+		          glyph.metrics.horiAdvance)/64.
 		return (0., -top), (width, top-bottom)
 	
 	
-	def render(self, uc):
+	def bitmap(self, uc):
 		glyph = self._glyph(uc)
 		_FT.Render_Glyph(byref(glyph), _ft2.RENDER_MODE_NORMAL)
 		

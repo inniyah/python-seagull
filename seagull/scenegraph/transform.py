@@ -72,7 +72,7 @@ class Translate(_Transform):
 		return x, y
 		
 	def inverted(self):
-		return Translate(-self.tx, -self,ty)
+		return Translate(-self.tx, -self.ty)
 	
 	def __str__(self):
 		return "translate(" + \
@@ -240,8 +240,15 @@ def _matrix(a, b, c, d, e, f, error=1e-6):
 
 class TransformList(list, _Transform):
 	@classmethod
-	def from_matrix(Cls, a, b, c, d, e, f):
+	def from_matrix(Cls, a=1., b=0., c=0., d=1., e=0., f=0.):
 		return Cls(_matrix(a, b, c, d, e, f))
+	
+	def matrix(self):
+		ox, oy = self.unproject(0, 0)
+		xx, xy = self.unproject(1, 0)
+		yx, yy = self.unproject(0, 1)
+		a, b, c, d, e, f = xx-ox, xy-oy, yx-ox, yy-oy, ox, oy
+		return a, b, c, d, e, f
 	
 	def render(self):
 		for transform in self:
@@ -261,10 +268,7 @@ class TransformList(list, _Transform):
 		return TransformList(t.inverted() for t in reversed(self))
 	
 	def normalized(self):
-		ox, oy = self.unproject(0, 0)
-		xx, xy = self.unproject(1, 0)
-		yx, yy = self.unproject(0, 1)
-		return self.from_matrix(xx-ox, xy-oy, yx-ox, yy-oy, ox, oy)
+		return self.from_matrix(*self.matrix())
 
 	def __add__(self, l):
 		return TransformList(list(self) + l)
