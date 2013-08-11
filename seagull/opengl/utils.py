@@ -7,7 +7,6 @@ OpenGL utilities
 # imports ####################################################################
 
 from math import floor, ceil
-from ctypes import c_float, c_int
 
 from . import gl as _gl
 
@@ -198,8 +197,8 @@ class OffscreenContext(object):
 		                    _gl.COLOR_BUFFER_BIT, _gl.NEAREST)
 		
 		# clean up
-		_gl.DeleteRenderbuffers(2, [rb_color, rb_depth_stencil])
-		_gl.DeleteFramebuffers(2, [fb_ms, fb_texture])
+		_gl.DeleteRenderbuffers(2, (_gl.uint * 2)(rb_color, rb_depth_stencil))
+		_gl.DeleteFramebuffers(2, (_gl.uint * 2)(fb_ms, fb_texture))
 
 		_gl.BindFramebuffer(_gl.DRAW_FRAMEBUFFER, self.fb_background)
 
@@ -239,16 +238,16 @@ def location(program, uniform):
 
 
 _c_types = {
-	float: c_float,
-	int:   c_int,
-	bool:  c_int,
+	float: _gl.float,
+	int:   _gl.int,
+	bool:  _gl.int,
 }
 
 _Uniforms = {
-	(1, c_float): _gl.Uniform1fv,
-	(2, c_float): _gl.Uniform2fv,
-	(4, c_float): _gl.Uniform4fv,
-	(1, c_int):   _gl.Uniform1iv,
+	(1, _gl.float): _gl.Uniform1fv,
+	(2, _gl.float): _gl.Uniform2fv,
+	(4, _gl.float): _gl.Uniform4fv,
+	(1, _gl.int):   _gl.Uniform1iv,
 }
 
 def set_uniform(program, uniform, values):

@@ -60,6 +60,9 @@ class Face(object):
 		return self.face.contents.glyph.contents
 	
 	def get_hkerning(self, ucl, ucr):
+		if ucl is None:
+			return 0.
+		
 		left_glyph = _FT.Get_Char_Index(self.face, ord(ucl))
 		right_glyph = _FT.Get_Char_Index(self.face, ord(ucr))
 		kerning = _ft2.Vector()
@@ -71,7 +74,8 @@ class Face(object):
 	def get_bbox(self, text):
 		width = 0
 		top, bottom = 0, 0
-		up = ' '
+		up = None
+		glyph = None
 		for uc in text:
 			width += self.get_hkerning(up, uc)
 			up = uc
@@ -81,8 +85,9 @@ class Face(object):
 			top = max(top, glyph.metrics.horiBearingY/64.)
 			bottom = min(bottom, (glyph.metrics.horiBearingY -
 			                      glyph.metrics.height)/64.)
-		width += (glyph.metrics.horiBearingX + glyph.metrics.width -
-		          glyph.metrics.horiAdvance)/64.
+		if glyph:
+			width += (glyph.metrics.horiBearingX + glyph.metrics.width -
+			          glyph.metrics.horiAdvance)/64.
 		return (0., -top), (width, top-bottom)
 	
 	

@@ -125,7 +125,7 @@ class Text(Element):
 		)
 		self._ws = [0]
 		
-		up = ' '
+		up = None
 		for uc in self.text:
 			X += font_face.get_hkerning(up, uc)
 			up = uc
