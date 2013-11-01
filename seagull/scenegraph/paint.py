@@ -477,7 +477,7 @@ class _Gradient(_PaintServer):
 		n = len(self.stops)
 		assert n <= MAX_STOPS, "too much stops in gradient"
 		
-		os, colors = zip(*[_stop(*stop) for stop in self.stops])
+		os, colors = zip(*(_stop(*stop) for stop in self.stops))
 		spread = _SPREADS[self.spreadMethod]
 		self._use_gradient(n, os, colors, spread)
 

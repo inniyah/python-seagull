@@ -254,7 +254,7 @@ def set_uniform(program, uniform, values):
 	v0, n = values[0], len(values)
 	if isinstance(v0, tuple):
 		l, t = len(v0), _c_types[type(v0[0])]
-		values = (t * (l*n))(*[u for value in values for u in value])
+		values = (t * (l*n))(*(u for value in values for u in value))
 	else:
 		l, t = 1, _c_types[type(v0)]
 		values = (t * n)(*values)

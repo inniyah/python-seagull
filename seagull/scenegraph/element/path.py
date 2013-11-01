@@ -132,7 +132,7 @@ def _scale_index(du2, scale_step=_SCALE_STEP):
 def _c_array(points):
 	"""turn list of 2-tuple into c array of floats."""
 	n = len(points)
-	return n, pack("%df" % (2*n), *[u for point in points for u in point])
+	return n, pack("%df" % (2*n), *(u for point in points for u in point))
 
 
 def _strip_range(stop):
