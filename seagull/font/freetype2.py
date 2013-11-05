@@ -32,11 +32,12 @@ class FreetypeWrapper(object):
 
 FT = FreetypeWrapper(cdll.LoadLibrary(find_library("freetype")))
 
-try:
-	environ["DYLD_LIBRARY_PATH"] = DYLD_LIBRARY_PATH
-	del DYLD_LIBRARY_PATH
-except NameError:
-	del environ["DYLD_LIBRARY_PATH"]
+if _platform == "darwin":
+	try:
+		environ["DYLD_LIBRARY_PATH"] = DYLD_LIBRARY_PATH
+		del DYLD_LIBRARY_PATH
+	except NameError:
+		del environ["DYLD_LIBRARY_PATH"]
 
 
 # types ######################################################################
