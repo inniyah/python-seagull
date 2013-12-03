@@ -100,11 +100,13 @@ class Text(Element):
 		bbox_x,   bbox_y   = (self._text_bbox.x-self.stroke_width/2.,
 		                      self._text_bbox.y-self.stroke_width/2.)
 		
-		a, b, c, d, _, _ = transforms.matrix()
+		_, (cosa, sina), (hx, hy), (sx, sy) = transforms.params()
+		a, b = cosa*sx, sina*sy
+		
 		c, d = -b, a # TODO: handle non orthogonal transformations
 		scale = hypot(a, b)
 		angle = degrees(atan2(b, a))
-
+		
 		vector = font_size * scale > self._VECTOR_L
 		vector = vector or (self.stroke is not None) or (self.fill is None)
 		

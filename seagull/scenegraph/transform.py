@@ -206,23 +206,27 @@ class SkewY(_Transform):
 		return "skewY(%s)" % self.ay
 
 
-def _matrix(a, b, c, d, e, f, error=1e-6):
+def _params_from_matrix(a, b, c, d, e, f, error=1e-6):
 	"""separate translation, rotation, shear and scale"""
-	
 	tx, ty = e, f
-	
+
 	if abs(b*c) < error:
 		cosa, sina = 1., 0.
 		sx, hy = a, b
 		hx, sy = c, d
 	else:
-		sign = 1. if a*d>b*c else -1.
+		sign = 1. if a*d>=b*c else -1.
 		cosa, sina = a+sign*d, b-sign*c
+		h = hypot(cosa, sina)
+		cosa, sina = cosa/h, sina/h
 		sx, hy = a*cosa + b*sina, b*cosa - a*sina
 		hx, sy = c*cosa + d*sina, d*cosa - c*sina
 		sx -= hx*hy/sy
-	h = hypot(cosa, sina)
-	
+	return (tx, ty), (cosa, sina), (hx, hy), (sx, sy)
+
+
+def _list_from_params(t, r, sk, s, error=1e-6):
+	(tx, ty), (cosa, sina), (hx, hy), (sx, sy) = t, r, sk, s
 	transforms = []
 	if (tx, ty) != (0., 0.):
 		transforms.append(Translate(tx, ty))
@@ -232,16 +236,24 @@ def _matrix(a, b, c, d, e, f, error=1e-6):
 		transforms.append(SkewX(degrees(atan2(hx, sy))))
 	if abs(hy) > abs(sx)*error:
 		transforms.append(SkewY(degrees(atan2(hy, sx))))
-	if (sx, sy) != (h, h):
-		transforms.append(Scale(sx/h, sy/h))
-	
+	if any(abs(1.-s) > error for s in (sx, sy)):
+		transforms.append(Scale(sx, sy))
 	return transforms
+
+
+def _list_from_matrix(a, b, c, d, e, f, error=1e-6):
+	return _list_from_params(*_params_from_matrix(a, b, c, d, e, f, error),
+	                         error=error)
 
 
 class TransformList(list, _Transform):
 	@classmethod
 	def from_matrix(Cls, a=1., b=0., c=0., d=1., e=0., f=0.):
-		return Cls(_matrix(a, b, c, d, e, f))
+		return Cls(_list_from_matrix(a, b, c, d, e, f))
+	
+	@classmethod
+	def from_params(Cls, t=(0., 0.), r=(1., 0.), sk=(0., 0.), s=(1., 1.)):
+		return Cls(_list_from_params(t, r, sk, s))
 	
 	def matrix(self):
 		ox, oy = self.unproject(0, 0)
@@ -249,6 +261,9 @@ class TransformList(list, _Transform):
 		yx, yy = self.unproject(0, 1)
 		a, b, c, d, e, f = xx-ox, xy-oy, yx-ox, yy-oy, ox, oy
 		return a, b, c, d, e, f
+	
+	def params(self):
+		return _params_from_matrix(*self.matrix())
 	
 	def render(self):
 		for transform in self:
