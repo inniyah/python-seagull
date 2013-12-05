@@ -93,7 +93,7 @@ def _flatten(path_data, du2=1.):
 		elif c == 'Z':
 			x1, y1 = p1 = path[0]
 			dx, dy = x1-x0, y1-y0
-			if dx*dx+dy*dy < du2:
+			if (dx*dx+dy*dy)*du2 > 1.:
 				path.append(p1)
 			paths.append((path, True, joins))
 			path = []
@@ -218,7 +218,7 @@ class Path(Element):
 			paths = self._paths(du2)
 			
 			# better thin stroke rendering
-			du = sqrt(du2)
+			du = 1./sqrt(du2)
 			adapt_width = self.stroke_width / du
 			if adapt_width < _WIDTH_LIMIT:
 				width = du
