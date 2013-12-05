@@ -93,7 +93,7 @@ def _flatten(path_data, du2=1.):
 		elif c == 'Z':
 			x1, y1 = p1 = path[0]
 			dx, dy = x1-x0, y1-y0
-			if dx*dx+dy*dy > du2:
+			if dx*dx+dy*dy < du2:
 				path.append(p1)
 			paths.append((path, True, joins))
 			path = []
@@ -117,16 +117,15 @@ _SCALE_STEP  = 1.2
 def _du2(transforms):
 	"""square of the size of a pixel in local coordinates."""
 	try:
-		x, y = tuple(x-o for o, x in zip(transforms.project(),
-		                                 transforms.project(1.)))
+		a, b, c, d, _, _ = transforms.matrix()
 	except ZeroDivisionError:
 		return 1.
 	else:
-		return x*x+y*y
+		return sum(u*u for u in [a, b, c, d])
 
 def _scale_index(du2, scale_step=_SCALE_STEP):
 	"""log discretization of the scale suitable as key for hashing cache."""
-	return -int(floor(log(du2, scale_step)/2.))
+	return int(floor(log(du2, scale_step)/2.))
 
 
 def _c_array(points):

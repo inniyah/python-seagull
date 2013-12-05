@@ -73,7 +73,7 @@ def _cubic(p0, p1, p2, p3, du2):
 	d1 = (x3-x0)*(y1-y0) - (y3-y0)*(x1-x0)
 	d2 = (x3-x0)*(y2-y0) - (y3-y0)*(x2-x0)
 	dd03 = (x3-x0)*(x3-x0)+(y3-y0)*(y3-y0)
-	if d1*d1+d2*d2 < dd03*du2*_L2_RATIO:
+	if (d1*d1+d2*d2)*du2 < dd03*_L2_RATIO:
 		return [_lerp(p1, p2), p3]
 	else:
 		p01, p12, p23, p012, p123, p0123 = _casteljau(p0, p1, p2, p3)
@@ -134,7 +134,7 @@ def _arc(p0, rs, phi, flags, p1, du2):
 
 	path = []
 	xc, yc = c*Xc-s*Yc + ux+x1, s*Xc+c*Yc + uy+y1
-	N = int((((r2x+r2y)/du2)**.25) * abs(da))
+	N = int((((r2x+r2y)*du2)**.25) * abs(da))
 	for i in range(N-1):
 		a = a0 + da*(i+1)/N
 		X, Y = rx*cos(a), ry*sin(a)
