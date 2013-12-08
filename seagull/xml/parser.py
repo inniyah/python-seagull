@@ -453,7 +453,7 @@ class Parser(object):
 	
 	def close_text(self):
 		text = self.texts.pop()
-		text.text = " ".join(self.cdata)
+		text.text = "".join(self.cdata)
 	
 	
 	def open_use(self, **attributes):

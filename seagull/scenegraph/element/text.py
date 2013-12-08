@@ -36,7 +36,7 @@ class Text(Element):
 		"font_family", "font_weight", "font_style", "font_size", "text"
 	]
 	
-	_VECTOR_L = 30
+	_VECTOR_L = 10
 	_letters_cache = {}
 	_faces_cache = {}
 	
@@ -162,6 +162,7 @@ class Text(Element):
 			Y += dY
 			self._ws.append(hypot(X, Y)/scale)
 		
+		# TODO: better policy based on fill/stroke type
 		filler = Rectangle(
 			x=filler_x, y=filler_y,
 			transform=[Scale(scale), Rotate(angle),
@@ -197,4 +198,9 @@ class Text(Element):
 		return self._text_bbox._hit_test(x, y, transforms)
 	
 	def _xml_content(self, defs):
-		return self.text
+		text = self.text
+		for old, new in [('&', '&amp;'),
+		                 ('<', '&lt;'),
+		                 ('>', '&gt;')]:
+			text = text.replace(old, new)
+		return text
