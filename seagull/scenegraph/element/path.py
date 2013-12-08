@@ -125,7 +125,10 @@ def _du2(transforms):
 
 def _scale_index(du2, scale_step=_SCALE_STEP):
 	"""log discretization of the scale suitable as key for hashing cache."""
-	return int(floor(log(du2, scale_step)/2.))
+	try:
+		return int(floor(log(du2, scale_step)/2.))
+	except:
+		return None
 
 
 def _c_array(points):
