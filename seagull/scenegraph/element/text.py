@@ -13,7 +13,7 @@ from ...font import Face
 from ...opengl.utils import create_texture
 
 from .._common import _u
-from ..transform import Translate, Rotate, Scale, TransformList, Pixels
+from ..transform import Translate, Rotate, Scale
 from ..paint import _Texture, Color
 from .rectangle import Rectangle
 from .path import Path
@@ -152,9 +152,8 @@ class Text(Element):
 		
 		if all(type(c) in [type(None), Color] for c in [self.fill, self.stroke]):
 			# single pass rendering
-			word = Group(
-				transform=[Translate(x_anchor),
-				          Rotate(-angle), Scale(1./scale)],
+			text = Group(
+				transform=[Translate(x_anchor), Rotate(-angle), Scale(1/scale)],
 				fill=self.fill, fill_opacity=self.fill_opacity,
 				stroke=self.stroke, stroke_opacity=self.stroke_opacity,
 				stroke_linejoin=self.stroke_linejoin,
@@ -165,7 +164,7 @@ class Text(Element):
 			if not vector:
 				for letter in letters:
 					letter.element.fill.rgb = self.fill.rgb
-			word.render(transforms, inheriteds)
+			text.render(transforms, inheriteds)
 		
 		else:
 			# multi-pass rendering if a gradient or pattern is used
@@ -185,7 +184,7 @@ class Text(Element):
 
 			filler = Rectangle(
 				x=filler_x, y=filler_y,
-				transform=[Scale(scale), Rotate(angle),
+				transform=[Translate(x_anchor),
 				           Translate(bbox_x-filler_x, bbox_y-filler_y)],
 				width=self._text_bbox.width+self.stroke_width,
 				height=self._text_bbox.height+self.stroke_width,
@@ -193,17 +192,14 @@ class Text(Element):
 				stroke=None,
 			)
 			
-			_transforms = transforms + [Translate(x_anchor),
-			                            Rotate(-angle), Scale(1/scale)]
-			with Pixels(X0, Y0):
-				for filler_fill, filler_opacity, masking in [
-					(self.fill,   self.fill_opacity,   (Color.white, None)),
-					(self.stroke, self.stroke_opacity, (None, Color.white))
-				]:
-					if filler_fill:
-						filler.fill, filler.fill_opacity = filler_fill, filler_opacity
-						mask.fill, mask.stroke = masking
-						filler.render(_transforms, inheriteds)
+			for filler_fill, filler_opacity, masking in [
+				(self.fill,   self.fill_opacity,   (Color.white, None)),
+				(self.stroke, self.stroke_opacity, (None, Color.white))
+			]:
+				if filler_fill:
+					filler.fill, filler.fill_opacity = filler_fill, filler_opacity
+					mask.fill, mask.stroke = masking
+					filler.render(transforms, inheriteds)
 	
 	
 	def index(self, x, y=0):

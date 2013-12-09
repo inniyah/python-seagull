@@ -132,7 +132,7 @@ def keyboard(c, x, y):
 
 glutInit(sys.argv)
 
-glutInitDisplayString(b"rgba stencil double samples=8 hidpi")
+glutInitDisplayString(b"rgba stencil double samples=16 hidpi")
 glutInitWindowSize(int(x_max-x_min+2*margin), int(y_max-y_min+2*margin))
 glutCreateWindow(sys.argv[0].encode())
 
