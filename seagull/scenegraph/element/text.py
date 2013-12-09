@@ -150,10 +150,25 @@ class Text(Element):
 			x, _ = transforms.project(X+X0, Y+Y0)
 			self._ws.append(x-x_anchor)
 		
-		if False:
-			#TODO: simpler implementation for text not requiring 2 pass
-			raise NotImplementedError
+		if all(type(c) in [type(None), Color] for c in [self.fill, self.stroke]):
+			# single pass rendering
+			word = Group(
+				transform=[Translate(x_anchor),
+				          Rotate(-angle), Scale(1./scale)],
+				fill=self.fill, fill_opacity=self.fill_opacity,
+				stroke=self.stroke, stroke_opacity=self.stroke_opacity,
+				stroke_linejoin=self.stroke_linejoin,
+				stroke_linecap=self.stroke_linecap,
+				stroke_width=self.stroke_width,
+				children=letters,
+			)
+			if not vector:
+				for letter in letters:
+					letter.element.fill.rgb = self.fill.rgb
+			word.render(transforms, inheriteds)
+		
 		else:
+			# multi-pass rendering if a gradient or pattern is used
 			filler_x, filler_y = self.x, self.y-self._text_bbox.height
 			bbox_x,   bbox_y   = (self._text_bbox.x-self.stroke_width/2.,
 			                      self._text_bbox.y-self.stroke_width/2.)
