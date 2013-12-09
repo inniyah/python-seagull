@@ -93,23 +93,17 @@ class Text(Element):
 	def _render(self, transforms, inheriteds):
 		font_size = self.font_size
 		font_face = self.font_face
-		
-		x_anchor = self._anchor()
-		
-		filler_x, filler_y = self.x, self.y-self._text_bbox.height
-		bbox_x,   bbox_y   = (self._text_bbox.x-self.stroke_width/2.,
-		                      self._text_bbox.y-self.stroke_width/2.)
-		
+
 		_, (cosa, sina), (hx, hy), (sx, sy) = transforms.params()
 		a, b = cosa*sx, sina*sy
-		
-		c, d = -b, a # TODO: handle non orthogonal transformations
+		c, d = -b, a #TODO: handle non orthogonal transformations
 		scale = hypot(a, b)
 		angle = degrees(atan2(b, a))
 		
 		vector = font_size * scale > self._VECTOR_L
 		vector = vector or (self.stroke is not None) or (self.fill is None)
 		
+		x_anchor = self._anchor()
 		X0, Y0 = transforms.unproject(x_anchor)
 		
 		if vector:
@@ -117,14 +111,7 @@ class Text(Element):
 		else:
 			(X, X0), (Y, Y0) = modf(X0), modf(Y0)
 		
-		letters = Group(
-			transform=[Translate(filler_x-bbox_x, filler_y-bbox_y),
-			           Rotate(-angle), Scale(1/scale)],
-			fill_opacity=1., stroke_opacity=1.,
-			stroke_width=self.stroke_width*scale,
-			stroke_linejoin=self.stroke_linejoin,
-			stroke_linecap=self.stroke_linecap,
-		)
+		letters = []
 		self._ws = [0]
 		
 		up = None
@@ -156,34 +143,52 @@ class Text(Element):
 				self._letters_cache[key] = letter, (Xc, Yc), (W, H), (dX, dY)
 
 			if W > 0 and H > 0:
-				letters.children.append(Use(letter, x=Xi, y=Yi))
+				letters.append(Use(letter, x=Xi, y=Yi))
 
 			X += dX
 			Y += dY
-			self._ws.append(hypot(X, Y)/scale)
+			x, _ = transforms.project(X+X0, Y+Y0)
+			self._ws.append(x-x_anchor)
 		
-		# TODO: better policy based on fill/stroke type
-		filler = Rectangle(
-			x=filler_x, y=filler_y,
-			transform=[Scale(scale), Rotate(angle),
-			           Translate(bbox_x-filler_x, bbox_y-filler_y)],
-			width=self._text_bbox.width+self.stroke_width,
-			height=self._text_bbox.height+self.stroke_width,
-			mask=letters,
-			stroke=None,
-		)
+		if False:
+			#TODO: simpler implementation for text not requiring 2 pass
+			raise NotImplementedError
+		else:
+			filler_x, filler_y = self.x, self.y-self._text_bbox.height
+			bbox_x,   bbox_y   = (self._text_bbox.x-self.stroke_width/2.,
+			                      self._text_bbox.y-self.stroke_width/2.)
 		
-		_transforms = transforms + [Translate(x_anchor),
-		                            Rotate(-angle), Scale(1/scale)]
-		with Pixels(X0, Y0):
-			for fill, fill_opacity, letters_mask in [
-				(self.fill,   self.fill_opacity,   (Color.white, None)),
-				(self.stroke, self.stroke_opacity, (None, Color.white))
-			]:
-				if fill:
-					filler.fill, filler.fill_opacity = fill, fill_opacity
-					letters.fill, letters.stroke = letters_mask
-					filler.render(_transforms, inheriteds)
+			mask = Group(
+				transform=[Translate(filler_x-bbox_x, filler_y-bbox_y),
+				           Rotate(-angle), Scale(1/scale)],
+				fill_opacity=1., stroke_opacity=1.,
+				stroke_width=self.stroke_width*scale,
+				stroke_linejoin=self.stroke_linejoin,
+				stroke_linecap=self.stroke_linecap,
+				children=letters,
+			)
+
+			filler = Rectangle(
+				x=filler_x, y=filler_y,
+				transform=[Scale(scale), Rotate(angle),
+				           Translate(bbox_x-filler_x, bbox_y-filler_y)],
+				width=self._text_bbox.width+self.stroke_width,
+				height=self._text_bbox.height+self.stroke_width,
+				mask=mask,
+				stroke=None,
+			)
+			
+			_transforms = transforms + [Translate(x_anchor),
+			                            Rotate(-angle), Scale(1/scale)]
+			with Pixels(X0, Y0):
+				for filler_fill, filler_opacity, masking in [
+					(self.fill,   self.fill_opacity,   (Color.white, None)),
+					(self.stroke, self.stroke_opacity, (None, Color.white))
+				]:
+					if filler_fill:
+						filler.fill, filler.fill_opacity = filler_fill, filler_opacity
+						mask.fill, mask.stroke = masking
+						filler.render(_transforms, inheriteds)
 	
 	
 	def index(self, x, y=0):
