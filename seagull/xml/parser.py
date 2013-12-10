@@ -198,7 +198,7 @@ def href(v, _=None):
 		data = data[len("base64,"):]
 		_, v = mkstemp(".%s" % ext)
 		with open(v, "bw") as _image:
-			_image.write(b64decode(data))
+			_image.write(b64decode(data.encode("ascii")))
 	return ascii(v)
 
 

@@ -44,6 +44,7 @@ os.chdir(old_cwd)
 (x_min, y_min), (x_max, y_max) = scene.aabbox()
 margin = 20
 scene.transform.append(sg.Translate(margin-x_min, margin-y_min))
+window_size = int(x_max-x_min+2*margin), int(y_max-y_min+2*margin)
 
 
 # glut callbacks #############################################################
@@ -133,7 +134,7 @@ def keyboard(c, x, y):
 glutInit(sys.argv)
 
 glutInitDisplayString(b"rgba stencil double samples=16 hidpi")
-glutInitWindowSize(int(x_max-x_min+2*margin), int(y_max-y_min+2*margin))
+glutInitWindowSize(*window_size)
 glutCreateWindow(sys.argv[0].encode())
 
 glutReshapeFunc(gl_reshape)

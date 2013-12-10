@@ -39,9 +39,11 @@ def serialize(*elems):
 		yield _SVG_HEADER % (x_min, y_min, x_max-x_min, y_max-y_min)
 		if xml_defs:
 			yield "\t<defs>"
-			yield from xml_defs
+			for xml_def in xml_defs:
+				yield xml_def
 			yield "\t</defs>"
-		yield from xml_elems
+		for xml_elem in xml_elems:
+			yield xml_elem
 		yield _SVG_FOOTER
 	
 	return "\n".join(xml_lines())
