@@ -36,7 +36,7 @@ class Text(Element):
 		"font_family", "font_weight", "font_style", "font_size", "text"
 	]
 	
-	_VECTOR_L = 10
+	_VECTOR_L = 30
 	_letters_cache = {}
 	_faces_cache = {}
 	
@@ -111,7 +111,10 @@ class Text(Element):
 		else:
 			(X, X0), (Y, Y0) = modf(X0), modf(Y0)
 		
-		letters = []
+		letters = Group(
+			transform=[Translate(x_anchor), Rotate(-angle), Scale(1/scale)],
+			stroke_width=self.stroke_width*scale,
+		)
 		self._ws = [0]
 		
 		up = None
@@ -143,7 +146,7 @@ class Text(Element):
 				self._letters_cache[key] = letter, (Xc, Yc), (W, H), (dX, dY)
 
 			if W > 0 and H > 0:
-				letters.append(Use(letter, x=Xi, y=Yi))
+				letters.children.append(Use(letter, x=Xi, y=Yi))
 
 			X += dX
 			Y += dY
@@ -152,44 +155,29 @@ class Text(Element):
 		
 		if all(type(c) in [type(None), Color] for c in [self.fill, self.stroke]):
 			# single pass rendering
-			text = Group(
-				transform=[Translate(x_anchor), Rotate(-angle), Scale(1/scale)],
-				fill=self.fill, fill_opacity=self.fill_opacity,
-				stroke=self.stroke, stroke_opacity=self.stroke_opacity,
-				stroke_linejoin=self.stroke_linejoin,
-				stroke_linecap=self.stroke_linecap,
-				stroke_width=self.stroke_width,
-				children=letters,
-			)
 			if not vector:
-				for letter in letters:
+				for letter in letters.children:
 					letter.element.fill.rgb = self.fill.rgb
-			text.render(transforms, inheriteds)
+			letters.render(transforms, inheriteds)
 		
 		else:
 			# multi-pass rendering if a gradient or pattern is used
 			filler_x, filler_y = self.x, self.y-self._text_bbox.height
-			bbox_x,   bbox_y   = (self._text_bbox.x-self.stroke_width/2.,
+			bbox_x,   bbox_y   = (self._text_bbox.x-self.stroke_width/2. + x_anchor,
 			                      self._text_bbox.y-self.stroke_width/2.)
-		
-			mask = Group(
-				transform=[Translate(filler_x-bbox_x, filler_y-bbox_y),
-				           Rotate(-angle), Scale(1/scale)],
+			width,    height   = (self._text_bbox.width+self.stroke_width,
+				                   self._text_bbox.height+self.stroke_width)
+			
+			mask = Use(letters,
+				transform=[Translate(filler_x-bbox_x, filler_y-bbox_y)],
 				fill_opacity=1., stroke_opacity=1.,
-				stroke_width=self.stroke_width*scale,
-				stroke_linejoin=self.stroke_linejoin,
-				stroke_linecap=self.stroke_linecap,
-				children=letters,
 			)
 
 			filler = Rectangle(
-				x=filler_x, y=filler_y,
-				transform=[Translate(x_anchor),
-				           Translate(bbox_x-filler_x, bbox_y-filler_y)],
-				width=self._text_bbox.width+self.stroke_width,
-				height=self._text_bbox.height+self.stroke_width,
-				mask=mask,
+				x=filler_x, y=filler_y, width=width, height=height,
+				transform=[Translate(bbox_x-filler_x, bbox_y-filler_y)],
 				stroke=None,
+				mask=mask,
 			)
 			
 			for filler_fill, filler_opacity, masking in [
