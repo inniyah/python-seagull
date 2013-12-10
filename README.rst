@@ -38,7 +38,7 @@ SVG spec
 implemented:
 
 - shapes: path, rect, circle, ellipse, line, polyline, polygon, image
-- text: no support for skewed text
+- text: (excluding decoration, text on path)
 - structure: group, use (including attributes inheritance)
 - painting: solid color, linear and radial gradients (including units, transform, spread, href);
 - fill: rule (nonzero, evenodd)
