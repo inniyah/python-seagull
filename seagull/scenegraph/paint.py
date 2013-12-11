@@ -62,7 +62,7 @@ _TEXTURE_FRAG_SHADER = """
 
 """
 
-MAX_STOPS = 20
+MAX_STOPS = 21
 
 _GRADIENT_FRAG_SHADER = """
 	const int N = %(MAX_STOPS)s;
