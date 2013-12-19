@@ -8,7 +8,7 @@ paint servers
 # imports ####################################################################
 
 from ..opengl import gl as _gl
-from ..opengl.utils import (create_shader, create_program, set_uniform)
+from ..opengl.utils import (create_shader, create_program, set_uniform, create_texture)
 from ._common import _Element, _Context
 
 from .transform import TransformList, Translate, Scale
@@ -165,6 +165,17 @@ _RADIAL_OFFSET_FRAG_SHADER = """
 	}
 """
 
+_PATTERN_FRAG_SHADER = """
+	uniform sampler2D texture;
+	uniform vec2 origin;
+	uniform vec2 period;
+	
+	vec4 color() {
+		return texture2D(texture, mod(gl_TexCoord[0].xy + origin, period));
+	}
+
+"""
+
 _shaders = {
 	"solid_color": [
 		(_gl.VERTEX_SHADER,   _VERT_SHADER),
@@ -188,6 +199,11 @@ _shaders = {
 		(_gl.FRAGMENT_SHADER, _RADIAL_OFFSET_FRAG_SHADER),
 		(_gl.FRAGMENT_SHADER, _MAIN_FRAG_SHADER),
 	],
+	"pattern": [
+		(_gl.VERTEX_SHADER,   _VERT_SHADER),
+		(_gl.FRAGMENT_SHADER, _PATTERN_FRAG_SHADER),
+		(_gl.FRAGMENT_SHADER, _MAIN_FRAG_SHADER),
+	]
 }
 
 
@@ -230,6 +246,7 @@ _use_solid_color     = _create("solid_color", mask=[1])
 _use_texture         = _create("texture", texture=[0], mask=[1])
 _use_linear_gradient = _create("linear_gradient", mask=[1])
 _use_radial_gradient = _create("radial_gradient", mask=[1])
+_use_pattern         = _create("pattern", texture=[0], mask=[1])
 
 
 # utils ######################################################################
@@ -576,11 +593,12 @@ class RadialGradient(_Gradient):
 
 class Pattern(_PaintServer):
 	tag = "pattern"
-	_r, _g, _b = .5, .5, .5
+	_r, _g, _b = 1., 1., 1.
 
 	_DEFAULTS = {
-		"patternTransform": [],
-		"patternUnits":     "objectBoundingBox",
+		"patternUnits":        "objectBoundingBox",
+		"patternContentUnits": "userSpaceOnUse",
+		"patternTransform":    [],
 		"x": 0.,
 		"y": 0.,
 		"width": 0.,
@@ -592,20 +610,36 @@ class Pattern(_PaintServer):
 	]
 	
 	def __init__(self, pattern=None, parent=None,
+	                   patternUnits=None, patternContentUnits=None,
+	                   patternTransform=None,
 	                   x=None, y=None, width=None, height=None,
-	                   patternUnits=None, patternTransform=None,
 	                   **kwargs):
 		self.pattern = pattern
 		super(Pattern, self).__init__(parent)
+		if patternUnits != None: self.patternUnits = patternUnits
+		if patternContentUnits != None: self.patternContentUnits = patternContentUnits
+		if patternTransform != None: self.patternTransform = patternTransform
 		if x != None: self.x = x
 		if y != None: self.y = y
 		if width != None: self.width = width
 		if height != None: self.height = height
-		if patternUnits != None: self.patternUnits = patternUnits
-		if patternTransform != None: self.patternTransform = patternTransform
+		self.texture_id = create_texture(2, 2, b"\xff\xff\xc0\xff\xc0\xff\xff\xff", "LA", mag_filter=_gl.NEAREST)
+	
+	def __del__(self):
+		_gl.DeleteTextures([self.texture_id])
+	
+	@property
+	def units(self):
+		return _UNITS[self.patternUnits]
+	
+	@property
+	def transform(self):
+		return self.patternTransform
 	
 	def _use_program(self):
-		_use_solid_color()
+		_gl.BindTexture(_gl.TEXTURE_2D, self.texture_id)
+		_use_pattern(origin=[(float(self.x), float(self.y))],
+		             period=[(float(self.width), float(self.height))])
 	
 	def _xml_content(self, defs):
 		return self.pattern._xml_content(defs)

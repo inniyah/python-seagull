@@ -57,7 +57,9 @@ gl_display = gl_displayer()
 # textures ###################################################################
 
 def create_texture(width, height, data=None, format=_gl.RGBA, max_level=0,
-                   min_filter=_gl.LINEAR_MIPMAP_LINEAR, internalformat=None):
+                   min_filter=_gl.LINEAR_MIPMAP_LINEAR,
+                   mag_filter=_gl.LINEAR,
+                   internalformat=None):
 	if isinstance(format, str):
 		format = {
 			"RGB":  _gl.RGB,
@@ -74,7 +76,7 @@ def create_texture(width, height, data=None, format=_gl.RGBA, max_level=0,
 	_gl.TexParameteri(_gl.TEXTURE_2D, _gl.TEXTURE_BASE_LEVEL, 0)
 	_gl.TexParameteri(_gl.TEXTURE_2D, _gl.TEXTURE_MAX_LEVEL, max_level)
 	_gl.TexParameteri(_gl.TEXTURE_2D, _gl.TEXTURE_MIN_FILTER, min_filter)
-	_gl.TexParameteri(_gl.TEXTURE_2D, _gl.TEXTURE_MAG_FILTER, _gl.LINEAR)
+	_gl.TexParameteri(_gl.TEXTURE_2D, _gl.TEXTURE_MAG_FILTER, mag_filter)
 	_gl.TexParameteri(_gl.TEXTURE_2D, _gl.TEXTURE_WRAP_R, _gl.CLAMP_TO_EDGE)
 	_gl.TexParameteri(_gl.TEXTURE_2D, _gl.TEXTURE_WRAP_S, _gl.CLAMP_TO_EDGE)
 	_gl.TexParameteri(_gl.TEXTURE_2D, _gl.TEXTURE_WRAP_T, _gl.CLAMP_TO_EDGE)
