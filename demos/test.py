@@ -54,19 +54,20 @@ def load(index):
 	
 	(x_min, y_min), (x_max, y_max) = scene.aabbox()
 	glutReshapeWindow(int(x_max), int(y_max))
+	glutPostRedisplay()
+	return index
 
 
-	
 def goto(index):
 	global current
 	current = index % len(filenames)
-	load(current)
+	return load(current)
 
 def next_file():
-	goto(current+1)
+	return goto(current+1)
 	
 def prev_file():
-	goto(current-1)
+	return goto(current-1)
 
 
 # glut callbacks #############################################################
@@ -87,8 +88,6 @@ def keyboard(c, x, y):
 		next_file()
 	elif c == b'[':
 		prev_file()
-	
-	glutPostRedisplay()
 
 
 # main #######################################################################
@@ -102,6 +101,26 @@ glutReshapeFunc(gl_reshape)
 glutDisplayFunc(display)
 
 glutKeyboardFunc(keyboard)
+
+menus = {
+	(): glutCreateMenu(goto),
+}
+glutAttachMenu(GLUT_RIGHT_BUTTON)
+
+for i, name in enumerate(filenames):
+	path = tuple(n.encode() for n in name.split("-")[:-1])
+	for j in range(len(path)):
+		k = path[:j]
+		try:
+			menu = menus[k]
+		except KeyError:
+			submenu = glutCreateMenu(goto)
+			glutSetMenu(menu)
+			glutAddSubMenu(k[-1], submenu)
+			menu = menus[k] = submenu
+	glutSetMenu(menu)
+	glutAddMenuEntry(path[-1], i)
+
 
 gl_prepare()
 
