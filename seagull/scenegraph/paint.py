@@ -8,7 +8,8 @@ paint servers
 # imports ####################################################################
 
 from ..opengl import gl as _gl
-from ..opengl.utils import (create_shader, create_program, set_uniform, create_texture)
+from ..opengl.utils import (create_shader, create_program, set_uniform,
+                            create_texture)
 from ._common import _Element, _Context
 
 from .transform import TransformList, Translate, Scale
@@ -594,6 +595,7 @@ class RadialGradient(_Gradient):
 class Pattern(_PaintServer):
 	tag = "pattern"
 	_r, _g, _b = 1., 1., 1.
+	_texture_id = 0
 
 	_DEFAULTS = {
 		"patternUnits":        "objectBoundingBox",
@@ -603,6 +605,7 @@ class Pattern(_PaintServer):
 		"y": 0.,
 		"width": 0.,
 		"height": 0.,
+		"viewBox": None,
 	}
 	
 	_state_attributes = _Paint._state_attributes + list(_DEFAULTS) + [
@@ -613,6 +616,7 @@ class Pattern(_PaintServer):
 	                   patternUnits=None, patternContentUnits=None,
 	                   patternTransform=None,
 	                   x=None, y=None, width=None, height=None,
+	                   viewBox=None,
 	                   **kwargs):
 		self.pattern = pattern
 		super(Pattern, self).__init__(parent)
@@ -623,10 +627,10 @@ class Pattern(_PaintServer):
 		if y != None: self.y = y
 		if width != None: self.width = width
 		if height != None: self.height = height
-		self.texture_id = create_texture(2, 2, b"\xff\xff\xc0\xff\xc0\xff\xff\xff", "LA", mag_filter=_gl.NEAREST)
+		self.viewBox = viewBox
 	
 	def __del__(self):
-		_gl.DeleteTextures([self.texture_id])
+		_gl.DeleteTextures([self._texture_id])
 	
 	@property
 	def units(self):
@@ -637,7 +641,9 @@ class Pattern(_PaintServer):
 		return self.patternTransform
 	
 	def _use_program(self):
-		_gl.BindTexture(_gl.TEXTURE_2D, self.texture_id)
+		if not self._texture_id:
+			self._texture_id = create_texture(2, 2, b"\xff\xff\xc0\xff\xc0\xff\xff\xff", "LA", mag_filter=_gl.NEAREST)
+		_gl.BindTexture(_gl.TEXTURE_2D, self._texture_id)
 		_use_pattern(origin=[(float(self.x), float(self.y))],
 		             period=[(float(self.width), float(self.height))])
 	

@@ -280,6 +280,7 @@ converters = defaultdict(lambda: lambda a, _: ascii(a), {
 	"fy":                length,
 	"gradientTransform": transform_list,
 	"patternTransform":  transform_list,
+	"viewBox":           length_list,
 })
 
 
