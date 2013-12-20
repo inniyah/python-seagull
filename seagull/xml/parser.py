@@ -307,11 +307,9 @@ class Parser(object):
 	def reset(self, **attributes):
 		self.root = sg.Group(**attributes)
 		self.groups = [self.root]
-		self.defs = []
-		self.clips = []
-		self.masks = []
 		self.cdata = []
 		self.texts = []
+		self.gradient_stops = []
 		self.uses = defaultdict(list)
 		self.clippeds = defaultdict(list)
 		self.maskeds = defaultdict(list)
@@ -398,16 +396,8 @@ class Parser(object):
 			for masked in self.maskeds.pop(_id, []):
 				masked.mask = elem
 		
-		if name == "defs":
-			self.defs.append(elem)
-		elif name == "clipPath":
-			elem.tag = "clipPath"
-			self.clips.append(elem)
-		elif name == "mask":
-			elem.tag = "mask"
-			self.masks.append(elem)
-		elif name == "pattern":
-			pass
+		if name in ["defs", "clipPath", "mask", "pattern"]:
+			elem.tag = name
 		else:
 			self.groups[-1].children.append(elem)
 		
@@ -468,60 +458,52 @@ class Parser(object):
 		return use
 	
 	
-	def open_gradient(self, **attributes):
-		self.gradient_id = attributes["_id"]
-		self.gradient_stops = []
-		self.gradient_kwargs = attributes
-	open_linearGradient = open_radialGradient = open_gradient
+	def open_pserver(self, **attributes):
+		self.pserver_kwargs = attributes
 	
-	def close_gradient(self, Gradient):
-		_href = self.gradient_kwargs.pop("href", None)
+	def close_pserver(self, PaintServer):
+		kwargs = self.pserver_kwargs
+		_id = kwargs.pop("_id")
+		_href = kwargs.pop("href", None)
 		if _href:
 			assert _href.startswith("#")
-			self.gradient_kwargs["parent"] = _href[len("#"):]
-		
-		self.elements[self.gradient_id] = (
-			Gradient,
-			[stop(**s) for s in self.gradient_stops] or None,
-			self.gradient_kwargs
-		)
+			kwargs["parent"] = _href[len("#"):]
+		if self.gradient_stops:
+			kwargs["stops"] = [stop(**s) for s in self.gradient_stops]
+			self.gradient_stops = []
+		self.elements[_id] = (PaintServer, kwargs)
 	
-	def close_linearGradient(self, **attributes):
-		return self.close_gradient(sg.LinearGradient, **attributes)
-	def close_radialGradient(self, **attributes):
-		return self.close_gradient(sg.RadialGradient, **attributes)
+	open_linearGradient = open_radialGradient = open_pserver
+	def open_pattern(self, **attributes):
+		self.open_pserver(**attributes)
+		return sg.Group()
+	
+	def close_linearGradient(self):
+		return self.close_pserver(sg.LinearGradient)
+	def close_radialGradient(self):
+		return self.close_pserver(sg.RadialGradient)
+	def close_pattern(self):
+		self.pserver_kwargs["pattern"] = self.close_g()
+		return self.close_pserver(sg.Pattern)
 		
 	def open_stop(self, **attributes):
 		self.gradient_stops.append(attributes)
-
-	
-	def open_pattern(self, **attributes):
-		pattern = sg.Group()
-		self.groups.append(pattern)
-		return sg.Pattern(pattern, **attributes)
-	
-	close_pattern = close_g
-
 
 
 def get_pserver(elements, _id):
 	pserver = elements[_id]
 	
 	try:
-		Gradient, stops, kwargs = pserver
+		PaintServer, kwargs = pserver
 	except TypeError:
 		pass
 	else:
 		if "parent" in kwargs:
 			parent_id = kwargs["parent"]
 			parent = get_pserver(elements, parent_id)
-			kwargs["parent"] = parent
-		for key in list(kwargs):
-			if key not in ["stops", "parent", "cx", "cy", "r", "fx", "fy",
-			               "x1", "y1", "x2", "y2", "spreadMethod",
-			               "gradientUnits", "gradientTransform"]:
-				del kwargs[key]
-		pserver = elements[_id] = Gradient(stops, **kwargs)
+		else:
+			parent = None
+		pserver = elements[_id] = PaintServer(parent, **{k: kwargs[k] for k in kwargs if k in PaintServer._DEFAULTS})
 	
 	return pserver
 

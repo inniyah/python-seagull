@@ -468,14 +468,12 @@ class _Gradient(_PaintServer):
 		"spreadMethod":      "pad",
 	}
 	
-	_state_attributes = _PaintServer._state_attributes + list(_DEFAULTS) + [
-		"stops",
-	]
-
-	def __init__(self, stops=None, parent=None, spreadMethod=None,
+	_state_attributes = _PaintServer._state_attributes + list(_DEFAULTS)
+	
+	def __init__(self, parent=None, stops=None, spreadMethod=None,
 	                   gradientUnits=None, gradientTransform=None):
-		if stops != None: self.stops = stops
 		super(_Gradient, self).__init__(parent)
+		if stops != None: self.stops = stops
 		if spreadMethod != None: self.spreadMethod = spreadMethod
 		if gradientUnits != None: self.gradientUnits = gradientUnits
 		if gradientTransform != None: self.gradientTransform = gradientTransform
@@ -533,13 +531,12 @@ class LinearGradient(_Gradient):
 		"y2": 0.,
 	}
 	_state_attributes = _Gradient._state_attributes + list(_DEFAULTS)
-
 	_DEFAULTS.update(_Gradient._DEFAULTS)
 	
-	def __init__(self, stops=None, parent=None, spreadMethod=None,
+	def __init__(self, parent=None, stops=None, spreadMethod=None,
 	                   gradientUnits=None, gradientTransform=None,
 	                   x1=None, y1=None, x2=None, y2=None):
-		super(LinearGradient, self).__init__(stops, parent, spreadMethod,
+		super(LinearGradient, self).__init__(parent, stops, spreadMethod,
 		                                     gradientUnits, gradientTransform)
 		if x1 != None: self.x1 = x1
 		if y1 != None: self.y1 = y1
@@ -564,13 +561,12 @@ class RadialGradient(_Gradient):
 		"fy": None,
 	}
 	_state_attributes = _Gradient._state_attributes + list(_DEFAULTS)
-
 	_DEFAULTS.update(_Gradient._DEFAULTS)
 	
-	def __init__(self, stops=None, parent=None, spreadMethod=None,
+	def __init__(self, parent=None, stops=None, spreadMethod=None,
 	                   gradientUnits=None, gradientTransform=None,
 	                   cx=None, cy=None, r=None, fx=None, fy=None):
-		super(RadialGradient, self).__init__(stops, parent, spreadMethod,
+		super(RadialGradient, self).__init__(parent, stops, spreadMethod,
 		                                     gradientUnits, gradientTransform)
 		if cx != None: self.cx = cx
 		if cy != None: self.cy = cy
@@ -607,19 +603,19 @@ class Pattern(_PaintServer):
 		"height": 0.,
 		"viewBox": None,
 	}
-	
 	_state_attributes = _Paint._state_attributes + list(_DEFAULTS) + [
 		"pattern",
 	]
+	_DEFAULTS.update(_Gradient._DEFAULTS)
 	
-	def __init__(self, pattern=None, parent=None,
+	def __init__(self, parent=None, pattern=None,
 	                   patternUnits=None, patternContentUnits=None,
 	                   patternTransform=None,
 	                   x=None, y=None, width=None, height=None,
 	                   viewBox=None,
 	                   **kwargs):
-		self.pattern = pattern
 		super(Pattern, self).__init__(parent)
+		self.pattern = pattern
 		if patternUnits != None: self.patternUnits = patternUnits
 		if patternContentUnits != None: self.patternContentUnits = patternContentUnits
 		if patternTransform != None: self.patternTransform = patternTransform
