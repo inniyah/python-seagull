@@ -255,7 +255,8 @@ def _stroke(path, closed, joins, width,
 	stroke = []
 	
 	path_points = _enumerate_unique(path)
-	(_, p0), (i1, p1) = next(path_points), next(path_points)
+	(i0, p0) = next(path_points)
+	(i1, p1) = next(path_points, (i0, p0))
 	p0i, p1i = p0, p1
 
 	join_indices = iter(joins)

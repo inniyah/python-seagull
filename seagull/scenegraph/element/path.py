@@ -105,7 +105,7 @@ def _flatten(path_data, du2=1.):
 		
 	if path:
 		paths.append((path, False, joins))
-
+	
 	return paths
 
 
