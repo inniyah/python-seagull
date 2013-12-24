@@ -8,8 +8,7 @@ paint servers
 # imports ####################################################################
 
 from ..opengl import gl as _gl
-from ..opengl.utils import (create_shader, create_program, set_uniform,
-                            create_texture)
+from ..opengl.utils import (create_shader, create_program, set_uniform)
 from ._common import _Element, _Context
 
 from .transform import TransformList, Translate, Scale
@@ -167,12 +166,16 @@ _RADIAL_OFFSET_FRAG_SHADER = """
 """
 
 _PATTERN_FRAG_SHADER = """
-	uniform sampler2D texture;
 	uniform vec2 origin;
 	uniform vec2 period;
 	
 	vec4 color() {
-		return texture2D(texture, mod(gl_TexCoord[0].xy + origin, period));
+		vec2 uv = mod(gl_TexCoord[0].xy + origin, period);
+		if((uv.x-period.x/2.)*(uv.y-period.y/2.) < 0.) {
+			return vec4(.75, .75, .75, 1.);
+		} else {
+			return vec4(1., 1., 1., 1.);
+		}
 	}
 
 """
@@ -247,7 +250,7 @@ _use_solid_color     = _create("solid_color", mask=[1])
 _use_texture         = _create("texture", texture=[0], mask=[1])
 _use_linear_gradient = _create("linear_gradient", mask=[1])
 _use_radial_gradient = _create("radial_gradient", mask=[1])
-_use_pattern         = _create("pattern", texture=[0], mask=[1])
+_use_pattern         = _create("pattern", mask=[1])
 
 
 # utils ######################################################################
@@ -591,7 +594,6 @@ class RadialGradient(_Gradient):
 class Pattern(_PaintServer):
 	tag = "pattern"
 	_r, _g, _b = 1., 1., 1.
-	_texture_id = 0
 
 	_DEFAULTS = {
 		"patternUnits":        "objectBoundingBox",
@@ -625,9 +627,6 @@ class Pattern(_PaintServer):
 		if height != None: self.height = height
 		self.viewBox = viewBox
 	
-	def __del__(self):
-		_gl.DeleteTextures([self._texture_id])
-	
 	@property
 	def units(self):
 		return _UNITS[self.patternUnits]
@@ -637,9 +636,6 @@ class Pattern(_PaintServer):
 		return self.patternTransform
 	
 	def _use_program(self):
-		if not self._texture_id:
-			self._texture_id = create_texture(2, 2, b"\xff\xff\xc0\xff\xc0\xff\xff\xff", "LA", mag_filter=_gl.NEAREST)
-		_gl.BindTexture(_gl.TEXTURE_2D, self._texture_id)
 		_use_pattern(origin=[(float(self.x), float(self.y))],
 		             period=[(float(self.width), float(self.height))])
 	
