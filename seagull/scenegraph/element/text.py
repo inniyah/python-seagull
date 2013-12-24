@@ -112,7 +112,7 @@ class Text(Element):
 			(X, X0), (Y, Y0) = modf(X0), modf(Y0)
 		
 		letters = Group(
-			transform=[Translate(x_anchor), Rotate(-angle), Scale(1/scale)],
+			transform=[Translate(x_anchor), Rotate(-angle), Scale(1/scale), Translate(-X, -Y)],
 			stroke_width=self.stroke_width*scale,
 		)
 		self._ws = [0]
