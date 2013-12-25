@@ -89,6 +89,13 @@ def keyboard(c, x, y):
 	elif c == b'[':
 		prev_file()
 
+def special(k, x, y):
+	if k == GLUT_KEY_RIGHT:
+		next_file()
+	elif k == GLUT_KEY_LEFT:
+		prev_file()
+	print(k)
+
 
 # main #######################################################################
 
@@ -101,6 +108,7 @@ glutReshapeFunc(gl_reshape)
 glutDisplayFunc(display)
 
 glutKeyboardFunc(keyboard)
+glutSpecialFunc(special)
 
 menus = {
 	(): glutCreateMenu(goto),
