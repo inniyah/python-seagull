@@ -244,7 +244,10 @@ def point_list(v, _=None):
 	v = list(reversed(v.split()))
 	d = []
 	while v:
-		d.append(pop2(v))
+		try:
+			d.append(pop2(v))
+		except IndexError:
+			break
 	return d
 
 converters = defaultdict(lambda: lambda a, _: ascii(a), {
