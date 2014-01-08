@@ -452,9 +452,14 @@ class Parser(object):
 	
 	def open_use(self, **attributes):
 		_href = attributes.pop("href")
-		assert _href.startswith("#")
-		_id = _href[len("#"):]
-		element = self.elements.get(_id, None)
+		external, _id = _href.split("#")
+		if external:
+			external = open(external).read()
+			parser = Parser()
+			parser.parse(external)
+		else:
+			parser = self
+		element = parser.elements.get(_id, None)
 		use = sg.Use(element, **attributes)
 		if element is None:
 			self.uses[_id].append(use)
@@ -488,7 +493,7 @@ class Parser(object):
 	def close_pattern(self):
 		self.pserver_kwargs["pattern"] = self.close_g()
 		return self.close_pserver(sg.Pattern)
-		
+	
 	def open_stop(self, **attributes):
 		self.gradient_stops.append(attributes)
 
