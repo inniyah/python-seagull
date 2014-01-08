@@ -51,7 +51,7 @@ def load(index):
 	scene = sg.Group(
 		children=[svg, image],
 	)
-	
+
 	(x_min, y_min), (x_max, y_max) = scene.aabbox()
 	glutReshapeWindow(int(x_max), int(y_max))
 	glutPostRedisplay()
@@ -65,7 +65,7 @@ def goto(index):
 
 def next_file():
 	return goto(current+1)
-	
+
 def prev_file():
 	return goto(current-1)
 
@@ -83,7 +83,7 @@ def keyboard(c, x, y):
 	if c == b'q':
 		sys.exit(0)
 	elif c == b's':
-		sys.stdout.write(serialize(scene))		
+		sys.stdout.write(serialize(scene))
 	elif c == b']':
 		next_file()
 	elif c == b'[':
@@ -94,7 +94,6 @@ def special(k, x, y):
 		next_file()
 	elif k == GLUT_KEY_LEFT:
 		prev_file()
-	print(k)
 
 
 # main #######################################################################
