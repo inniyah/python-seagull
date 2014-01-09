@@ -52,7 +52,7 @@ _INHERITEDS = {
 	"fill":              Color.black,
 	"fill_opacity":      1.,
 	"fill_rule":         'nonzero',
-	"stroke":            None,
+	"stroke":            Color.none,
 	"stroke_opacity":    1.,
 	"stroke_width":      1,
 	"stroke_linecap":    'butt',
@@ -164,7 +164,7 @@ class Element(_Element):
 	
 	def _color(self, color):
 		if color == Color.current:
-			color = self.color
+			return self.color
 		return color
 	
 	def render(self, transforms=TransformList(), inheriteds=_INHERITEDS,

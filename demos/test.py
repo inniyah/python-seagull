@@ -10,6 +10,7 @@ import os
 import atexit
 import glob
 import traceback
+import logging
 
 from OpenGL.GLUT import *
 
@@ -43,7 +44,7 @@ def load(index):
 	glutSetWindowTitle(t.encode())
 	print(t)
 	try:
-		svg = parse(open(filename).read())
+		svg = parse(open(filename).read(), logging.WARNING)
 	except:
 		traceback.print_exception(*sys.exc_info())
 		svg = sg.Group()
@@ -51,7 +52,7 @@ def load(index):
 	scene = sg.Group(
 		children=[svg, image],
 	)
-
+	
 	(x_min, y_min), (x_max, y_max) = scene.aabbox()
 	glutReshapeWindow(int(x_max), int(y_max))
 	glutPostRedisplay()

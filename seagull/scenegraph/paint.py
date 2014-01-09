@@ -265,6 +265,9 @@ def _stop(o, c, a=1.):
 	if c is Color.none:
 		c = Color.black
 		a = 0.
+	elif c is Color.current: # TODO: should be fixed
+		c = Color.black
+		a = 0.
 	return (float(o), (c._r, c._g, c._b, a))
 
 
@@ -349,7 +352,10 @@ class _Paint(_Element):
 
 class Color(_Paint):
 	tag = "solidColor"
-
+	
+	none    = None
+	current = "currentColor"
+	
 	_state_attributes = _Paint._state_attributes + [
 		"_r", "_g", "_b",
 	]
@@ -465,7 +471,7 @@ _SPREADS = {
 
 class _Gradient(_PaintServer):
 	_DEFAULTS = {
-		"stops":             [(0., None)],
+		"stops":             [(0., Color.none)],
 		"gradientTransform": [],
 		"gradientUnits":     "objectBoundingBox",
 		"spreadMethod":      "pad",
@@ -513,7 +519,13 @@ class _Gradient(_PaintServer):
 			return ""
 		stops = []
 		def _stop(offset, color, opacity=None):
-			return offset, color._xml_attr(defs) if color else "none", opacity
+			if color is Color.none:
+				color = "none"
+			elif color == Color.current:
+				pass
+			else:
+				color = color._xml_attr(defs)
+			return offset, color, opacity
 		for stop in self.stops:
 			offset, color, opacity = _stop(*stop)
 			if opacity is None:
@@ -800,6 +812,3 @@ for name in _color_keywords:
 	r, g, b = _color_keywords[name]
 	color = Color(r=r, g=g, b=b, name=name)
 	setattr(Color, name, color)
-
-Color.none = None
-Color.current = "currentColor"

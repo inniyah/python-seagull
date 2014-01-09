@@ -164,7 +164,7 @@ def color(v, elements={}):
 			return get_pserver(elements, url)
 	
 	log.warning("unknown color %s" % v)
-	return sg.Color.none
+	return v
 
 
 def transform(v):
@@ -290,7 +290,7 @@ converters = defaultdict(lambda: lambda a, _: ascii(a), {
 
 # gradient ###################################################################
 
-def stop(offset, stop_color="none", stop_opacity=None, **_):
+def stop(offset, stop_color=sg.Color.none, stop_opacity=None, **_):
 	o, c = number(offset), color(stop_color)
 	if stop_opacity is None:
 		return o, c
@@ -368,6 +368,9 @@ class Parser(object):
 		
 		attributes = asciify_keys(attributes)
 		attributes = switify_values(attributes, self.elements)
+		for k in "color", "fill", "stroke":
+			if attributes.get(k, None) == "inherit":
+				del attributes[k]
 		
 		try:
 			handler = getattr(self, "open_%s" % name)
