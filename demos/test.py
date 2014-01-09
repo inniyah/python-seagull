@@ -34,7 +34,11 @@ old_cwd = os.getcwd()
 os.chdir(test_path)
 atexit.register(os.chdir, old_cwd)
 
-filenames = glob.glob("%s*.svg" % prefix)
+SKIP_LIST = ["animate-", "dom-"]
+filenames = [
+	f for f in glob.glob("%s*.svg*" % prefix)
+	if not any(skip in f for skip in SKIP_LIST)
+]
 current = 0
 
 def load(index):
@@ -44,11 +48,16 @@ def load(index):
 	glutSetWindowTitle(t.encode())
 	print(t)
 	try:
-		svg = parse(open(filename).read(), logging.WARNING)
+		if filename.endswith('z'):
+			import gzip
+			f = gzip.open(filename)
+		else:
+			f = open(filename)
+		svg = parse(f.read(), logging.WARNING)
 	except:
 		traceback.print_exception(*sys.exc_info())
 		svg = sg.Group()
-	image = sg.Image("../png/%s.png" % filename[:-4], x=480)
+	image = sg.Image("../png/%s.png" % filename.rsplit(".", 1)[0], x=480)
 	scene = sg.Group(
 		children=[svg, image],
 	)

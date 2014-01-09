@@ -10,10 +10,9 @@ import sys
 import os
 import logging
 import xml.parsers.expat
-
+import gzip
 from tempfile import mkstemp
 from base64 import b64decode
-from math import sqrt, atan2, degrees, hypot
 from collections import defaultdict
 
 from .. import scenegraph as sg
@@ -164,7 +163,7 @@ def color(v, elements={}):
 			return get_pserver(elements, url)
 	
 	log.warning("unknown color %s" % v)
-	return v
+	return "unknown"
 
 
 def transform(v):
@@ -197,9 +196,15 @@ def href(v, _=None):
 		ext, data = v[len("data:image/"):].split(";", 1)
 		assert data.startswith("base64,")
 		data = data[len("base64,"):]
+		data = data.encode("ascii")
+		data = b64decode(data)
+		try:
+			data = gzip.decompress(data)
+		except:
+			pass
 		_, v = mkstemp(".%s" % ext)
 		with open(v, "bw") as _image:
-			_image.write(b64decode(data.encode("ascii")))
+			_image.write(data)
 	return ascii(v)
 
 
@@ -309,7 +314,6 @@ class Parser(object):
 		self.reset()
 	
 	def proc_instruction(self, target, data):
-		# , 'type="text/css" href="svgRef4.css" '
 		if target != 'xml-stylesheet':
 			return
 		if not data.startswith('type="text/css"'):
@@ -326,13 +330,13 @@ class Parser(object):
 	def reset(self, **attributes):
 		self.root = sg.Group(**attributes)
 		self.groups = [self.root]
+		self.elements = {"__root__": self.root}
 		self.cdata = []
 		self.texts = []
 		self.gradient_stops = []
 		self.uses = defaultdict(list)
 		self.clippeds = defaultdict(list)
 		self.maskeds = defaultdict(list)
-		self.elements = {}
 		self.styles = defaultdict(dict)
 	
 	def parse(self, document):
@@ -369,7 +373,7 @@ class Parser(object):
 		attributes = asciify_keys(attributes)
 		attributes = switify_values(attributes, self.elements)
 		for k in "color", "fill", "stroke":
-			if attributes.get(k, None) == "inherit":
+			if attributes.get(k, None) == "unknown":
 				del attributes[k]
 		
 		try:
@@ -428,6 +432,11 @@ class Parser(object):
 		if isinstance(elem, sg.Group):
 			self.groups.append(elem)
 	
+	def open_image(self, **attributes):
+		href = attributes["href"]
+		if "svg" in href.rsplit(".")[-1]:
+			return self.open_use(**attributes)
+		return sg.Image(**attributes)
 	
 	def end_element(self, name):
 		try:
@@ -473,7 +482,10 @@ class Parser(object):
 	
 	def open_use(self, **attributes):
 		_href = attributes.pop("href")
-		external, _id = _href.split("#")
+		try:
+			external, _id = _href.split("#")
+		except ValueError:
+			external, _id = _href, "__root__"
 		if external:
 			# TODO: cache parsers if the same external file is reused with != _id
 			parser = Parser()
@@ -482,14 +494,13 @@ class Parser(object):
 			if path:
 				os.chdir(path)
 			if filename.endswith('z'):
-				import gzip
 				f = gzip.open(filename)
 			else:
-				f = open(filename)
+				f = open(filename, "rb")
 			try:
 				parser.parse(f.read())
 			except:
-				pass
+				raise
 			f.close()
 			os.chdir(cwd)
 		else:
