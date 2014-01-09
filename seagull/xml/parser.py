@@ -7,6 +7,7 @@ svg parser
 # imports ####################################################################
 
 import sys
+import os
 import logging
 import xml.parsers.expat
 
@@ -304,8 +305,23 @@ class Parser(object):
 		self.expat_parser.StartElementHandler  = self.start_element
 		self.expat_parser.EndElementHandler    = self.end_element
 		self.expat_parser.CharacterDataHandler = self.char_data
+		self.expat_parser.ProcessingInstructionHandler = self.proc_instruction
 		self.reset()
 	
+	def proc_instruction(self, target, data):
+		# , 'type="text/css" href="svgRef4.css" '
+		if target != 'xml-stylesheet':
+			return
+		if not data.startswith('type="text/css"'):
+			return
+		b = data.find('href="')
+		if b < 0:
+			return
+		b += len('href="')
+		e = data.find('"', b)
+		css_name = data[b:e]
+		style = styles(open(css_name).read())
+		self.styles.update(style)
 	
 	def reset(self, **attributes):
 		self.root = sg.Group(**attributes)
@@ -347,6 +363,8 @@ class Parser(object):
 		if "id" in attributes:
 			key = "#%s" % attributes["id"]
 			attributes.update(self.styles[key])
+		attributes.update(self.styles[name])
+		attributes.update(self.styles["*"])
 		
 		attributes = asciify_keys(attributes)
 		attributes = switify_values(attributes, self.elements)
@@ -454,9 +472,23 @@ class Parser(object):
 		_href = attributes.pop("href")
 		external, _id = _href.split("#")
 		if external:
-			external = open(external).read()
+			# TODO: cache parsers if the same external file is reused with != _id
 			parser = Parser()
-			parser.parse(external)
+			cwd = os.getcwd()
+			path, filename = os.path.split(external)
+			if path:
+				os.chdir(path)
+			if filename.endswith('z'):
+				import gzip
+				f = gzip.open(filename)
+			else:
+				f = open(filename)
+			try:
+				parser.parse(f.read())
+			except:
+				pass
+			f.close()
+			os.chdir(cwd)
 		else:
 			parser = self
 		element = parser.elements.get(_id, None)
