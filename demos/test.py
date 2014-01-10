@@ -34,7 +34,10 @@ old_cwd = os.getcwd()
 os.chdir(test_path)
 atexit.register(os.chdir, old_cwd)
 
-SKIP_LIST = ["animate-", "dom-"]
+SKIP_LIST = [
+	"animate-", "filters-", "fonts-", "interact-", "linking-", "script-",
+	"dom-",
+]
 filenames = [
 	f for f in glob.glob("%s*.svg*" % prefix)
 	if not any(skip in f for skip in SKIP_LIST)

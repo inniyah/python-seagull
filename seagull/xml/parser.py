@@ -70,7 +70,7 @@ def styles(cdata):
 				continue
 		while not token.startswith("{"):
 			key = token # TODO: properly implement css selectors
-			token = next(cdata)
+			token = next(cdata, "{}")
 		content = token
 		for token in cdata:
 			content += token
@@ -295,7 +295,7 @@ converters = defaultdict(lambda: lambda a, _: ascii(a), {
 
 # gradient ###################################################################
 
-def stop(offset, stop_color=sg.Color.none, stop_opacity=None, **_):
+def stop(offset, stop_color="none", stop_opacity=None, **_):
 	o, c = number(offset), color(stop_color)
 	if stop_opacity is None:
 		return o, c
@@ -358,6 +358,7 @@ class Parser(object):
 		self.cdata.append(data)
 	
 	def start_element(self, name, attributes):
+		name = name.split(":")[-1]
 		if "style" in attributes:
 			style = attributes.pop("style")
 			attributes.update(attributify(style))
@@ -395,7 +396,6 @@ class Parser(object):
 					"line":     sg.Line,
 					"polyline": sg.Polyline,
 					"polygon":  sg.Polygon,
-					"image":    sg.Image,
 				}[name]
 			except KeyError:
 				log.warning("unhandeled %s element" % name)
@@ -432,13 +432,8 @@ class Parser(object):
 		if isinstance(elem, sg.Group):
 			self.groups.append(elem)
 	
-	def open_image(self, **attributes):
-		href = attributes["href"]
-		if "svg" in href.rsplit(".")[-1]:
-			return self.open_use(**attributes)
-		return sg.Image(**attributes)
-	
 	def end_element(self, name):
+		name = name.split(":")[-1]
 		try:
 			handler = getattr(self, "close_%s" % name)
 		except AttributeError:
@@ -510,6 +505,13 @@ class Parser(object):
 		if element is None:
 			self.uses[_id].append(use)
 		return use
+	
+	
+	def open_image(self, **attributes):
+		href = attributes["href"]
+		if "svg" in href.rsplit(".")[-1]:
+			return self.open_use(**attributes)
+		return sg.Image(**attributes)
 	
 	
 	def open_pserver(self, **attributes):
