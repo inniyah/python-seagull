@@ -313,13 +313,11 @@ def _make_paint(_stencil):
 
 		# render mask
 		_gl.ColorMask(_gl.FALSE, _gl.FALSE, _gl.FALSE, _gl.FALSE)
-		_gl.DepthMask(_gl.FALSE)
 		_gl.StencilFunc(_gl.ALWAYS, 0, -1)
 		_stencil(*data)
 		
 		# fill mask
 		_gl.ColorMask(_gl.TRUE, _gl.TRUE, _gl.TRUE, _gl.TRUE)
-		_gl.DepthMask(_gl.TRUE)
 		_gl.StencilFunc(_gl.NOTEQUAL, 0, -1)
 		_gl.StencilOp(_gl.KEEP, _gl.KEEP, _gl.REPLACE)
 		

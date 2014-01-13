@@ -134,7 +134,11 @@ def _scale_index(du2, scale_step=_SCALE_STEP):
 def _c_array(points):
 	"""turn list of 2-tuple into c array of floats."""
 	n = len(points)
-	return n, pack("%df" % (2*n), *(u for point in points for u in point))
+	try:
+		s = len(points[0])
+	except:
+		return n, pack("%df" % n, *points)
+	return n, pack("%df" % (s*n), *(u for point in points for u in point))
 
 
 def _strip_range(stop):
@@ -148,6 +152,7 @@ def _strip_range(stop):
 
 def _join_strips(strips):
 	"""concatenate strips"""
+	strips = iter(strips)
 	strip = next(strips, [])
 	for s in strips:
 		if len(strip) % 2 == 1:
@@ -209,14 +214,15 @@ class Path(Element):
 	
 	def _strokes(self, du2=1.):
 		stroke_state = (list(self.d), self.stroke_width, self.stroke_linecap,
-		                              self.stroke_linejoin, self.stroke_miterlimit)
+		                              self.stroke_linejoin, self.stroke_miterlimit,
+		                              self.stroke_dasharray, self.stroke_dashoffset)
 		if stroke_state != self._stroke_state:
 			self._stroke_cache = dict()
 			self._stroke_state = stroke_state
 		
 		scale_index = _scale_index(du2)
 		try:
-			strokes, opacity_correction = self._stroke_cache[scale_index]
+			strokes, offsets, opacity_correction = self._stroke_cache[scale_index]
 		except KeyError:
 			paths = self._paths(du2)
 			
@@ -231,15 +237,19 @@ class Path(Element):
 				opacity_correction = 1.
 			
 			# strokes
-			strokes = _join_strips(_stroke(path, closed, joins, width,
-			                               self.stroke_linecap, du,
-			                               self.stroke_linejoin,
-			                               self.stroke_miterlimit)
-			                       for path, closed, joins in paths)
+			strokes, offsets = [], []
+			for path, closed, joins in paths:
+				s, o = _stroke(path, closed, joins, width, du,
+				               self.stroke_linecap, self.stroke_linejoin,
+				               self.stroke_miterlimit)
+				strokes.append(s)
+				offsets.append(o)
+			strokes, offsets = _join_strips(strokes), _join_strips(offsets)
 			strokes = _c_array(strokes), strokes
-			self._stroke_cache[scale_index] = strokes, opacity_correction
+			offsets = _c_array(offsets), offsets
+			self._stroke_cache[scale_index] = strokes, offsets, opacity_correction
 		
-		return strokes, opacity_correction
+		return strokes, offsets, opacity_correction
 	
 	
 	def _aabbox(self, transforms, inheriteds):
@@ -251,7 +261,7 @@ class Path(Element):
 			if fills:
 				points.append(transforms.unproject(*p) for p in fills)
 		if self.stroke and self.stroke_width > 0.:
-			(_, strokes), _ = self._strokes(du2)
+			(_, strokes), _, _ = self._strokes(du2)
 			if strokes:
 				points.append(transforms.unproject(*p) for p in strokes)
 		
@@ -273,11 +283,12 @@ class Path(Element):
 		
 		stroke = self._color(self.stroke)
 		if stroke and self.stroke_width > 0.:
-			(strokes, _), correction = self._strokes(du2)
+			(strokes, _), (offsets, _), correction = self._strokes(du2)
 			opacity = self.stroke_opacity * correction
 			margin = self.stroke_width/2. / correction
 			margin *= max(1., self.stroke_miterlimit)
-			stroke.paint_one(opacity, strokes, origin, self._bbox, margin+1.)
+			stroke.paint_one(opacity, strokes,
+			                 origin, self._bbox, margin+1.)
 	
 	
 	def _hit_test(self, x, y, transforms):
@@ -296,7 +307,7 @@ class Path(Element):
 						return True
 
 		if self.stroke and self.stroke_width > 0.:
-			(_, strokes), _ = self._strokes(du2)
+			(_, strokes), _, _ = self._strokes(du2)
 			if strokes:
 				if _stroke_hit(x, y, strokes):
 					return True

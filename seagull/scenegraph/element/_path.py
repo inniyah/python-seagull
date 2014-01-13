@@ -246,18 +246,20 @@ def _enumerate_unique(path):
 		previous = p
 
 
-def _stroke(path, closed, joins, width,
-            cap='butt', du=1., join='miter', miterlimit=4.):
+def _stroke(path, closed, joins, width, du=1.,
+            cap='butt', join='miter', miterlimit=4.):
 	"""compute a stroke from discretized path."""
 	hw = width / 2.
 	_cap = _caps[cap]
 	_join = _joins[join]
 	stroke = []
+	offsets = []
 	
 	path_points = _enumerate_unique(path)
 	(i0, p0) = next(path_points)
 	(i1, p1) = next(path_points, (i0, p0))
 	p0i, p1i = p0, p1
+	offset = _h(p0, p1)
 
 	join_indices = iter(joins)
 	next_join = next(join_indices)
@@ -266,12 +268,15 @@ def _stroke(path, closed, joins, width,
 	
 	for i2, p2 in path_points:
 		if i1 == next_join:
-			stroke += _join(p0, p1, p2, hw, du, miterlimit)
+			j = _join(p0, p1, p2, hw, du, miterlimit)
 			next_join = next(join_indices, 0)
 		else:
-			stroke += _join_miter(p0, p1, p2, hw, du, 1.)
+			j = _join_miter(p0, p1, p2, hw, du, 1.)
+		stroke += j
+		offsets += [offset] * len(j)
 		i1 = i2
 		p0, p1 = p1, p2
+		offset += _h(p0, p1)
 
 	if closed:
 		b = e = _join(p0, p1, p1i, hw, du, miterlimit)
@@ -279,7 +284,9 @@ def _stroke(path, closed, joins, width,
 		b = _cap(p0i, p1i, hw, du)
 		e = _cap(p0,  p1,  hw, du, start=False)
 	
-	return b + stroke + e
+	stroke = b + stroke + e
+	offsets = [0.] * len(b) + offsets + [offset] * len(e)
+	return stroke, offsets
 
 
 # filling ####################################################################

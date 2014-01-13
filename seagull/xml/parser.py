@@ -271,6 +271,8 @@ converters = defaultdict(lambda: lambda a, _: ascii(a), {
 	"stroke_width":      length,
 	"stroke_miterlimit": number,
 	"stroke_opacity":    number,
+	"stroke_dasharray":  length_list,
+	"stroke_dashoffset": length,
 	"fill_opacity":      number,
 	"opacity":           number,
 	"color":             color,
