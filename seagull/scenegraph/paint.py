@@ -97,39 +97,11 @@ _GRADIENT_FRAG_SHADER = """
 		return ki*ci + (1.-ki)*ca;
 	}
 	
-	vec4 igradient(float ob, float oe) {
-		// color integrated between offsets ob and oe
-		// (useful for antialiasing when distance between stops is subpixel)
-		vec4 c = gradient(ob);
-		vec4 ic = vec4(0.);
-		float lo = oe-ob;
-
-		for(int i = 0; i < n; i++) {
-			float o = os[i];
-			if(o <= ob) continue;
-			if(o > oe) break;
-			
-			ic += (o-ob)*c;
-			c = colors[i];
-			ic += (o-ob)*c;
-			ob = o;
-		}
-		ic += (oe-ob)*c;
-		c = gradient(oe);
-		ic += (oe-ob)*c;
-		return ic/lo/2.;
-	}
-	
 	vec4 color() {
 		vec2 p = gl_TexCoord[0].xy;
 		float o = o(p);
 		float s = spread(o);
-
-//		vec4 color = gradient(s);
-		float how = length(vec2(dFdx(o), dFdy(o)))/2.;
-		vec4 color = igradient(s-how, s+how);
-		
-		return color;
+		return gradient(s);
 	}
 """ % {"MAX_STOPS": MAX_STOPS}
 
