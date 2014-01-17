@@ -132,6 +132,8 @@ def length(v, _=None):
 	return u * number(v)
 
 def length_list(v, _=None):
+	if v == 'none':
+		return None
 	v = replace(v, (",", " "))
 	v = list(length(u) for u in v.split())
 	if len(v) == 1:
