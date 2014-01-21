@@ -91,6 +91,7 @@ class OffscreenContext(object):
 	"""offscreen framebuffer context."""
 	fbos = []
 	origins = []
+	viewports = []
 	
 	def __init__(self, aabbox, bg_color=None):
 		self.samples = _gl.GetInteger(_gl.SAMPLES)
@@ -139,12 +140,12 @@ class OffscreenContext(object):
 			                    _gl.COLOR_BUFFER_BIT|_gl.STENCIL_BUFFER_BIT,
 			                    _gl.NEAREST)
 		else:
-			_gl.PushAttrib(_gl.COLOR_BUFFER_BIT)
+			_clear_color = _gl.GetFloat(_gl.COLOR_CLEAR_VALUE)
 			_gl.ClearColor(*self.bg_color)
 			_gl.Clear(_gl.COLOR_BUFFER_BIT|_gl.STENCIL_BUFFER_BIT)
-			_gl.PopAttrib(_gl.COLOR_BUFFER_BIT)
+			_gl.ClearColor(*_clear_color)
 
-		_gl.PushAttrib(_gl.VIEWPORT_BIT)
+		self.viewports.append(_gl.GetFloat(_gl.VIEWPORT))
 		_gl.Viewport(0, 0, width, height)
 	
 		_gl.MatrixMode(_gl.PROJECTION)
@@ -173,7 +174,7 @@ class OffscreenContext(object):
 		_gl.PopMatrix()
 		_gl.MatrixMode(_gl.MODELVIEW)
 
-		_gl.PopAttrib(_gl.VIEWPORT_BIT)
+		_gl.Viewport(*self.viewports.pop())
 
 		# fbo for texture
 		fb_texture = _gl.GenFramebuffers(1)
