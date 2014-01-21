@@ -16,13 +16,21 @@ from .transform import TransformList, Translate, Scale
 
 # shaders ####################################################################
 
+_ATTRIB_LOCATIONS = {
+	b"vertex": 0,
+}
+
 _VERT_SHADER = """
+	attribute vec2 vertex;
+	uniform vec3 color;
+	uniform float alpha;
+	
 	void main() {
-		gl_ClipVertex = gl_ModelViewMatrix * gl_Vertex;
-		gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-		gl_TexCoord[0] = gl_TextureMatrixInverse[0] * gl_Vertex;
+		gl_ClipVertex = gl_ModelViewMatrix * vec4(vertex, 0., 1.);
+		gl_Position = gl_ModelViewProjectionMatrix * vec4(vertex, 0., 1.);
+		gl_TexCoord[0] = gl_TextureMatrixInverse[0] * vec4(vertex, 0., 1.);
 		gl_TexCoord[1] = gl_TextureMatrixInverse[1] * gl_ClipVertex;
-		gl_FrontColor = gl_Color;
+		gl_FrontColor = vec4(color, alpha);
 	}
 """
 
@@ -190,7 +198,7 @@ def _program(name):
 		program = _programs[name]
 	except KeyError:
 		shaders = (create_shader(*shader) for shader in _shaders[name])
-		program = _programs[name] = create_program(*shaders)
+		program = _programs[name] = create_program(*shaders, attrib_locations=_ATTRIB_LOCATIONS)
 	return program
 
 
@@ -258,17 +266,17 @@ _UNITS = {
 }
 
 def _stencil_one(n, vertices):
-	_gl.VertexPointer(2, _gl.FLOAT, 0, vertices)
+	_gl.VertexAttribPointer(_ATTRIB_LOCATIONS[b"vertex"], 2, _gl.FLOAT, False, 0, vertices)
 	_gl.StencilOp(_gl.KEEP, _gl.KEEP, _gl.INCR)
 	_gl.DrawArrays(_gl.TRIANGLE_STRIP, 0, n)
 
 def _stencil_evenodd(n, vertices):
-	_gl.VertexPointer(2, _gl.FLOAT, 0, vertices)
+	_gl.VertexAttribPointer(_ATTRIB_LOCATIONS[b"vertex"], 2, _gl.FLOAT, False, 0, vertices)
 	_gl.StencilOp(_gl.KEEP, _gl.KEEP, _gl.INVERT)
 	_gl.DrawArrays(_gl.TRIANGLE_STRIP, 0, n)
 
 def _stencil_nonzero(n, vertices):
-	_gl.VertexPointer(2, _gl.FLOAT, 0, vertices)
+	_gl.VertexAttribPointer(_ATTRIB_LOCATIONS[b"vertex"], 2, _gl.FLOAT, False, 0, vertices)
 	_gl.Enable(_gl.CULL_FACE)
 	for cull, op in [(_gl.BACK,  _gl.INCR_WRAP),
 	                 (_gl.FRONT, _gl.DECR_WRAP)]:
@@ -280,8 +288,7 @@ def _stencil_nonzero(n, vertices):
 
 def _make_paint(_stencil):
 	def paint(color, alpha, data, origin, bbox, margin=0.):
-		color._use_program()
-		_gl.Color(color._r, color._g, color._b, alpha)
+		color._use_program(color=[color.rgb], alpha=[float(alpha)])
 
 		# render mask
 		_gl.ColorMask(_gl.FALSE, _gl.FALSE, _gl.FALSE, _gl.FALSE)
@@ -336,8 +343,8 @@ class Color(_Paint):
 		self._b = _float(b) if b != None else self._r
 		self._name = name
 
-	def _use_program(self):
-		_use_solid_color()
+	def _use_program(self, **kwargs):
+		_use_solid_color(**kwargs)
 	
 	def _xml_attr(self, defs):
 		return self._name or \
@@ -355,9 +362,9 @@ class _Texture(_Paint):
 	def __del__(self):
 		_gl.DeleteTextures([self.texture_id])
 	
-	def _use_program(self):
+	def _use_program(self, **kwargs):
 		_gl.BindTexture(_gl.TEXTURE_2D, self.texture_id)
-		_use_texture()
+		_use_texture(**kwargs)
 
 
 class _MaskContext(_Context):
@@ -465,16 +472,16 @@ class _Gradient(_PaintServer):
 	def transform(self):
 		return self.gradientTransform
 	
-	def _use_gradient(self, n, os, colors, spread):
+	def _use_gradient(self, n, os, colors, spread, **kwargs):
 		raise NotImplementedError
 	
-	def _use_program(self):
+	def _use_program(self, **kwargs):
 		n = len(self.stops)
 		assert n <= MAX_STOPS, "too much stops in gradient"
 		
 		os, colors = zip(*(_stop(*stop) for stop in self.stops))
 		spread = _SPREADS[self.spreadMethod]
-		self._use_gradient(n, os, colors, spread)
+		self._use_gradient(n, os, colors, spread, **kwargs)
 
 
 	@property
@@ -528,11 +535,11 @@ class LinearGradient(_Gradient):
 		if x2 != None: self.x2 = x2
 		if y2 != None: self.y2 = y2
 	
-	def _use_gradient(self, n, os, colors, spread):
+	def _use_gradient(self, n, os, colors, spread, **kwargs):
 		_use_linear_gradient(p1=[(float(self.x1), float(self.y1))],
 		                     p2=[(float(self.x2), float(self.y2))],
 		                     n=[n], os=list(os), colors=list(colors),
-		                     spread=[spread])
+		                     spread=[spread], **kwargs)
 
 
 class RadialGradient(_Gradient):
@@ -559,7 +566,7 @@ class RadialGradient(_Gradient):
 		if fx != None: self.fx = fx
 		if fy != None: self.fy = fy
 	
-	def _use_gradient(self, n, os, colors, spread):
+	def _use_gradient(self, n, os, colors, spread, **kwargs):
 		fx, fy = self.fx, self.fy
 		if fx is None: fx = self.cx
 		if fy is None: fy = self.cy
@@ -568,7 +575,7 @@ class RadialGradient(_Gradient):
 		                     r=[float(self.r)],
 		                     f=[(float(fx), float(fy))],
 		                     n=[n], os=list(os), colors=list(colors),
-		                     spread=[spread])
+		                     spread=[spread], **kwargs)
 
 
 # pattern ####################################################################
@@ -617,9 +624,10 @@ class Pattern(_PaintServer):
 	def transform(self):
 		return self.patternTransform
 	
-	def _use_program(self):
+	def _use_program(self, **kwargs):
 		_use_pattern(origin=[(float(self.x), float(self.y))],
-		             period=[(float(self.width), float(self.height))])
+		             period=[(float(self.width), float(self.height))],
+		             **kwargs)
 	
 	def _xml_content(self, defs):
 		return self.pattern._xml_content(defs)

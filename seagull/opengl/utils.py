@@ -15,7 +15,6 @@ from . import gl as _gl
 
 def gl_preparer(clear_color=(1., 1., 1., 0.)):
 	def prepare(clear_color=clear_color):
-		_gl.EnableClientState(_gl.VERTEX_ARRAY)
 		_gl.Enable(_gl.BLEND)
 		_gl.BlendFunc(_gl.SRC_ALPHA, _gl.ONE_MINUS_SRC_ALPHA)
 		_gl.ClearColor(*clear_color)
@@ -216,10 +215,13 @@ def create_shader(shader_type, source):
 		raise RuntimeError(_gl.GetShaderInfoLog(shader))
 	return shader
 
-def create_program(*shaders):
+def create_program(*shaders, attrib_locations={}):
 	program = _gl.CreateProgram()
 	for shader in shaders:
 		_gl.AttachShader(program, shader)
+	for attrib in attrib_locations:
+		_gl.BindAttribLocation(program, attrib_locations[attrib], attrib)
+		_gl.EnableVertexAttribArray(attrib_locations[attrib])
 	_gl.LinkProgram(program)
 	if _gl.GetProgramiv(program, _gl.LINK_STATUS) != _gl.TRUE:
 		raise RuntimeError(_gl.GetProgramInfoLog(program))
@@ -248,6 +250,7 @@ _c_types = {
 _Uniforms = {
 	(1, _gl.float): _gl.Uniform1fv,
 	(2, _gl.float): _gl.Uniform2fv,
+	(3, _gl.float): _gl.Uniform3fv,
 	(4, _gl.float): _gl.Uniform4fv,
 	(1, _gl.int):   _gl.Uniform1iv,
 }
