@@ -265,46 +265,44 @@ _UNITS = {
 	"userSpaceOnUse":    _user_space,
 }
 
-def _stencil_one(n, vertices):
-	_gl.VertexAttribPointer(_ATTRIB_LOCATIONS[b"vertex"], 2, _gl.FLOAT, False, 0, vertices)
-	_gl.StencilOp(_gl.KEEP, _gl.KEEP, _gl.INCR)
+def _stencil_op(n, op):
+	_gl.StencilOp(_gl.KEEP, _gl.KEEP, op)
 	_gl.DrawArrays(_gl.TRIANGLE_STRIP, 0, n)
 
-def _stencil_evenodd(n, vertices):
-	_gl.VertexAttribPointer(_ATTRIB_LOCATIONS[b"vertex"], 2, _gl.FLOAT, False, 0, vertices)
-	_gl.StencilOp(_gl.KEEP, _gl.KEEP, _gl.INVERT)
-	_gl.DrawArrays(_gl.TRIANGLE_STRIP, 0, n)
+def _stencil_one(n):
+	_stencil_op(n, _gl.INCR)
 
-def _stencil_nonzero(n, vertices):
-	_gl.VertexAttribPointer(_ATTRIB_LOCATIONS[b"vertex"], 2, _gl.FLOAT, False, 0, vertices)
+def _stencil_evenodd(n):
+	_stencil_op(n, _gl.INVERT)
+
+def _stencil_nonzero(n):
 	_gl.Enable(_gl.CULL_FACE)
 	for cull, op in [(_gl.BACK,  _gl.INCR_WRAP),
 	                 (_gl.FRONT, _gl.DECR_WRAP)]:
 		_gl.CullFace(cull)
-		_gl.StencilOp(_gl.KEEP, _gl.KEEP, op)
-		_gl.DrawArrays(_gl.TRIANGLE_STRIP, 0, n)
+		_stencil_op(n, op)
 	_gl.Disable(_gl.CULL_FACE)
 
 
 def _make_paint(_stencil):
-	def paint(color, alpha, data, origin, bbox, margin=0.):
+	def paint(color, alpha, data, origin, bbox):
 		color._use_program(color=[color.rgb], alpha=[float(alpha)])
-
+		n, vertices = data
+		_gl.VertexAttribPointer(_ATTRIB_LOCATIONS[b"vertex"], 2, _gl.FLOAT,
+		                        False, 0, vertices)
+		
 		# render mask
 		_gl.ColorMask(_gl.FALSE, _gl.FALSE, _gl.FALSE, _gl.FALSE)
 		_gl.StencilFunc(_gl.ALWAYS, 0, -1)
-		_stencil(*data)
+		_stencil(n)
 		
 		# fill mask
 		_gl.ColorMask(_gl.TRUE, _gl.TRUE, _gl.TRUE, _gl.TRUE)
 		_gl.StencilFunc(_gl.NOTEQUAL, 0, -1)
-		_gl.StencilOp(_gl.KEEP, _gl.KEEP, _gl.REPLACE)
 		
 		_gl.MatrixMode(_gl.TEXTURE)
 		with TransformList(color.units(origin, bbox) + color.transform):
-			(x_min, y_min), (x_max, y_max) = bbox
-			_gl.Rectf(x_min-margin, y_min-margin,
-			          x_max+margin, y_max+margin)
+			_stencil_op(n, _gl.REPLACE)
 		_gl.MatrixMode(_gl.MODELVIEW)
 	return paint
 

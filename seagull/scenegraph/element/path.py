@@ -285,10 +285,7 @@ class Path(Element):
 		if stroke and self.stroke_width > 0.:
 			(strokes, _), (offsets, _), correction = self._strokes(du2)
 			opacity = self.stroke_opacity * correction
-			margin = self.stroke_width/2. / correction
-			margin *= max(1., self.stroke_miterlimit)
-			stroke.paint_one(opacity, strokes,
-			                 origin, self._bbox, margin+1.)
+			stroke.paint_one(opacity, strokes, origin, self._bbox)
 	
 	
 	def _hit_test(self, x, y, transforms):
