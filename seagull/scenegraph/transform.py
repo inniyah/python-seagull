@@ -264,15 +264,19 @@ class Matrix:
 		self.b, self.d, self.f = sb*oa+sd*ob, sb*oc+sd*od, sb*oe+sd*of+sf
 		return self
 	
-	def inverset(self):
+	def inverse(self):
 		(a, c, e), (b, d, f), _ = self.matrix
 		try:
 			idet = 1./(a*d-b*c)
 		except ZeroDivisionError:
-			return (1., 0., 0., 0., 1., 0., 0., 0., 1.)
-		return ( d*idet,       -b*idet,             0.,
-		        -c*idet,        a*idet,             0.,
-		        (c*f-e*d)*idet, (b*d-a*f)*idet,     1.)
+			return Matrix()
+		return Matrix(*(idet*u for u in (d, -b, -c, a, c*f-e*d, b*d-a*f)))
+
+	def t(self):
+		return (self.a, self.b, 0.,
+		        self.c, self.d, 0.,
+		        self.e, self.f, 1.)
+
 
 def _params_from_matrix(a, b, c, d, e, f, error=1e-6):
 	"""separate translation, rotation, shear and scale"""

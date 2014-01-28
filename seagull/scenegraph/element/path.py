@@ -279,13 +279,13 @@ class Path(Element):
 				"nonzero": fill.paint_nonzero,
 				"evenodd": fill.paint_evenodd,
 			}[self.fill_rule]
-			paint(self.fill_opacity, fills, origin, self._bbox)
+			paint(self.fill_opacity, fills, transforms, origin, self._bbox)
 		
 		stroke = self._color(self.stroke)
 		if stroke and self.stroke_width > 0.:
 			(strokes, _), (offsets, _), correction = self._strokes(du2)
 			opacity = self.stroke_opacity * correction
-			stroke.paint_one(opacity, strokes, origin, self._bbox)
+			stroke.paint_one(opacity, strokes, transforms, origin, self._bbox)
 	
 	
 	def _hit_test(self, x, y, transforms):

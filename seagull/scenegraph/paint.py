@@ -24,6 +24,7 @@ _VERT_SHADER = """
 	attribute vec2 vertex;
 	uniform vec3 color;
 	uniform float alpha;
+	uniform mat3 transform;
 	uniform mat3 paint_transform;
 	uniform mat3 mask_transform;
 	
@@ -31,10 +32,10 @@ _VERT_SHADER = """
 	varying vec2 mask_coord;
 	
 	void main() {
-		vec4 pixel_position = gl_ModelViewMatrix * vec4(vertex, 0., 1.);
-		gl_Position = gl_ProjectionMatrix * pixel_position;
+		vec3 pixel_position = transform * vec3(vertex, 1.);
+		gl_Position = gl_ProjectionMatrix * vec4(pixel_position.xy, 0., 1.);
 		paint_coord = (paint_transform * vec3(vertex, 1.)).xy;
-		mask_coord = (mask_transform * vec3(pixel_position.xy, 1.)).xy;
+		mask_coord = (mask_transform * pixel_position).xy;
 		gl_FrontColor = vec4(color, alpha);
 	}
 """
@@ -222,7 +223,7 @@ def _create(name, **default_uniforms):
 		global _current_program, _current_uniforms
 		uniforms = dict(default_uniforms)
 		uniforms.update(kwargs)
-		uniforms["mask_transform"] = _MaskContext.transforms[-1]
+		uniforms["mask_transform"] = _MaskContext.transforms[-1].inverse()
 		uniforms["masking"] = [len(_MaskContext.textures) > 1]
 
 		program = _program(name)
@@ -300,10 +301,12 @@ def _stencil_nonzero(n):
 
 
 def _make_paint(_stencil):
-	def paint(color, alpha, data, origin, bbox):
+	def paint(color, alpha, data, transforms, origin, bbox):
+		transform = Matrix(*transforms.matrix())
 		paint_transform = Matrix(*TransformList(color.units(origin, bbox) +
-		                                        color.transform).matrix())
+		                                        color.transform).matrix()).inverse()
 		color._use_program(color=[color.rgb], alpha=[float(alpha)],
+		                   transform=transform,
 		                   paint_transform=paint_transform)
 		n, vertices = data
 		_gl.VertexAttribPointer(_ATTRIB_LOCATIONS[b"vertex"], 2, _gl.FLOAT,
