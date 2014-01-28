@@ -74,6 +74,12 @@ class Translate(_Transform):
 	def inverted(self):
 		return Translate(-self.tx, -self.ty)
 	
+	@property
+	def matrix(self):
+		return [[1., 0., self.tx],
+		        [0., 1., self.ty],
+		        [0., 0.,      1.]]
+	
 	def __str__(self):
 		return "translate(" + \
 		       ",".join(str(t) for t in [self.tx, self.ty]) + \
@@ -102,7 +108,13 @@ class Scale(_Transform):
 
 	def inverted(self):
 		return Scale(1./self.sx, 1./self.sy)
-		
+	
+	@property
+	def matrix(self):
+		return [[self.sx, 0.,      0.],
+		        [0.,      self.sy, 0.],
+		        [0.,      0.,      1.]]
+	
 	def __str__(self):
 		return "scale(" + \
 		       ",".join(str(t) for t in [self.sx, self.sy]) + \
@@ -138,7 +150,15 @@ class Rotate(_Transform):
 
 	def inverted(self):
 		return Rotate(-self.a, self.cx, self.cy)
-		
+	
+	@property
+	def matrix(self):
+		a, cx, cy = radians(self.a), self.cx, self.cy
+		c, s = cos(a), sin(a)
+		return [[c, -s,  cx*(c-1.)-cy*s],
+		        [s,  c,  cy*(c-1.)+cx*s],
+		        [0., 0.,             1.]]
+	
 	def __str__(self):
 		return "rotate(" + \
 		       ",".join(str(t) for t in [self.a,
@@ -171,7 +191,14 @@ class SkewX(_Transform):
 
 	def inverted(self):
 		return SkewX(-self.ax)
-
+	
+	@property
+	def matrix(self):
+		t = tan(radians(self.ax))
+		return [[1., t,  0.],
+		        [0., 1., 0.],
+		        [0., 0., 1.]]
+	
 	def __str__(self):
 		return "skewX(%s)" % self.ax
 
@@ -201,10 +228,51 @@ class SkewY(_Transform):
 
 	def inverted(self):
 		return SkewY(-self.ay)
-
+	
+	@property
+	def matrix(self):
+		t = tan(radians(self.ay))
+		return [[1., 0., 0.],
+		        [t,  1., 0.],
+		        [0., 0., 1.]]
+	
 	def __str__(self):
 		return "skewY(%s)" % self.ay
 
+class Matrix:
+	def __init__(self, a=1., b=0., c=0., d=1., e=0., f=0.):
+		self.a, self.c, self.e = a, c, e
+		self.b, self.d, self.f = b, d, f
+
+	@property
+	def matrix(self):
+		return [[self.a, self.c, self.e],
+		        [self.b, self.d, self.f],
+		        [0.,     0.,     1.]]
+	
+	def __mul__(self, other):
+		(sa, sc, se), (sb, sd, sf), _ = self.matrix
+		(oa, oc, oe), (ob, od, of), _ = other.matrix
+		a, c, e = sa*oa+sc*ob, sa*oc+sc*od, sa*oe+sc*of+se
+		b, d, f = sb*oa+sd*ob, sb*oc+sd*od, sb*oe+sd*of+sf
+		return Matrix(a, b, c, d, e, f)
+	
+	def __imul__(self, other):
+		(sa, sc, se), (sb, sd, sf), _ = self.matrix
+		(oa, oc, oe), (ob, od, of), _ = other.matrix
+		self.a, self.c, self.e = sa*oa+sc*ob, sa*oc+sc*od, sa*oe+sc*of+se
+		self.b, self.d, self.f = sb*oa+sd*ob, sb*oc+sd*od, sb*oe+sd*of+sf
+		return self
+	
+	def inverset(self):
+		(a, c, e), (b, d, f), _ = self.matrix
+		try:
+			idet = 1./(a*d-b*c)
+		except ZeroDivisionError:
+			return (1., 0., 0., 0., 1., 0., 0., 0., 1.)
+		return ( d*idet,       -b*idet,             0.,
+		        -c*idet,        a*idet,             0.,
+		        (c*f-e*d)*idet, (b*d-a*f)*idet,     1.)
 
 def _params_from_matrix(a, b, c, d, e, f, error=1e-6):
 	"""separate translation, rotation, shear and scale"""

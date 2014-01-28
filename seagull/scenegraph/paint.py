@@ -11,7 +11,7 @@ from ..opengl import gl as _gl
 from ..opengl.utils import (create_shader, create_program, set_uniform)
 from ._common import _Element, _Context
 
-from .transform import TransformList, Translate, Scale
+from .transform import TransformList, Translate, Scale, Matrix
 
 
 # shaders ####################################################################
@@ -24,12 +24,17 @@ _VERT_SHADER = """
 	attribute vec2 vertex;
 	uniform vec3 color;
 	uniform float alpha;
+	uniform mat3 paint_transform;
+	uniform mat3 mask_transform;
+	
+	varying vec2 paint_coord;
+	varying vec2 mask_coord;
 	
 	void main() {
-		gl_ClipVertex = gl_ModelViewMatrix * vec4(vertex, 0., 1.);
-		gl_Position = gl_ModelViewProjectionMatrix * vec4(vertex, 0., 1.);
-		gl_TexCoord[0] = gl_TextureMatrixInverse[0] * vec4(vertex, 0., 1.);
-		gl_TexCoord[1] = gl_TextureMatrixInverse[1] * gl_ClipVertex;
+		vec4 pixel_position = gl_ModelViewMatrix * vec4(vertex, 0., 1.);
+		gl_Position = gl_ProjectionMatrix * pixel_position;
+		paint_coord = (paint_transform * vec3(vertex, 1.)).xy;
+		mask_coord = (mask_transform * vec3(pixel_position.xy, 1.)).xy;
 		gl_FrontColor = vec4(color, alpha);
 	}
 """
@@ -40,12 +45,14 @@ _MAIN_FRAG_SHADER = """
 	
 	const vec4 luminance = vec4(.2125, .7154, .0721, 0.);
 	
+	varying vec2 mask_coord;
+	
 	vec4 color(); // filling color
 	
 	void main() {
 		vec4 color = color();
 		if(masking) {
-			color.a *= dot(luminance, texture2D(mask, gl_TexCoord[1].xy));
+			color.a *= dot(luminance, texture2D(mask, mask_coord));
 		}
 		gl_FragColor = gl_Color * color;
 	}
@@ -64,8 +71,10 @@ _SOLID_FRAG_SHADER = """
 _TEXTURE_FRAG_SHADER = """
 	uniform sampler2D texture;
 	
+	varying vec2 paint_coord;
+	
 	vec4 color() {
-		return texture2D(texture, gl_TexCoord[0].xy);
+		return texture2D(texture, paint_coord);
 	}
 
 """
@@ -79,6 +88,8 @@ _GRADIENT_FRAG_SHADER = """
 	uniform float os[N];
 	uniform vec4 colors[N];
 	uniform int spread;
+	
+	varying vec2 paint_coord;
 	
 	float o(vec2 p); // offset at point p in the gradient
 	
@@ -106,8 +117,7 @@ _GRADIENT_FRAG_SHADER = """
 	}
 	
 	vec4 color() {
-		vec2 p = gl_TexCoord[0].xy;
-		float o = o(p);
+		float o = o(paint_coord);
 		float s = spread(o);
 		return gradient(s);
 	}
@@ -149,8 +159,10 @@ _PATTERN_FRAG_SHADER = """
 	uniform vec2 origin;
 	uniform vec2 period;
 	
+	varying vec2 paint_coord;
+	
 	vec4 color() {
-		vec2 uv = mod(gl_TexCoord[0].xy + origin, period);
+		vec2 uv = mod(paint_coord + origin, period);
 		if((uv.x-period.x/2.)*(uv.y-period.y/2.) < 0.) {
 			return vec4(.75, .75, .75, 1.);
 		} else {
@@ -210,6 +222,8 @@ def _create(name, **default_uniforms):
 		global _current_program, _current_uniforms
 		uniforms = dict(default_uniforms)
 		uniforms.update(kwargs)
+		uniforms["mask_transform"] = _MaskContext.transforms[-1]
+		uniforms["masking"] = [len(_MaskContext.textures) > 1]
 
 		program = _program(name)
 		if _current_program != program:
@@ -222,8 +236,6 @@ def _create(name, **default_uniforms):
 			if v != _current_uniforms.get(k, None):
 				set_uniform(program, k, v)
 		_current_uniforms = uniforms
-		
-		set_uniform(program, "masking", [len(_MaskContext.textures) > 1])
 	return _use
 
 _use_solid_color     = _create("solid_color", mask=[1])
@@ -269,11 +281,14 @@ def _stencil_op(n, op):
 	_gl.StencilOp(_gl.KEEP, _gl.KEEP, op)
 	_gl.DrawArrays(_gl.TRIANGLE_STRIP, 0, n)
 
-def _stencil_one(n):
-	_stencil_op(n, _gl.INCR)
+def _make_stencil(op):
+	def _stencil(n):
+		_stencil_op(n, op)
+	return _stencil
 
-def _stencil_evenodd(n):
-	_stencil_op(n, _gl.INVERT)
+_stencil_one     = _make_stencil(_gl.INCR)
+_stencil_evenodd = _make_stencil(_gl.INVERT)
+_stencil_replace = _make_stencil(_gl.REPLACE)
 
 def _stencil_nonzero(n):
 	_gl.Enable(_gl.CULL_FACE)
@@ -286,24 +301,19 @@ def _stencil_nonzero(n):
 
 def _make_paint(_stencil):
 	def paint(color, alpha, data, origin, bbox):
-		color._use_program(color=[color.rgb], alpha=[float(alpha)])
+		paint_transform = Matrix(*TransformList(color.units(origin, bbox) +
+		                                        color.transform).matrix())
+		color._use_program(color=[color.rgb], alpha=[float(alpha)],
+		                   paint_transform=paint_transform)
 		n, vertices = data
 		_gl.VertexAttribPointer(_ATTRIB_LOCATIONS[b"vertex"], 2, _gl.FLOAT,
 		                        False, 0, vertices)
 		
-		# render mask
-		_gl.ColorMask(_gl.FALSE, _gl.FALSE, _gl.FALSE, _gl.FALSE)
-		_gl.StencilFunc(_gl.ALWAYS, 0, -1)
-		_stencil(n)
-		
-		# fill mask
-		_gl.ColorMask(_gl.TRUE, _gl.TRUE, _gl.TRUE, _gl.TRUE)
-		_gl.StencilFunc(_gl.NOTEQUAL, 0, -1)
-		
-		_gl.MatrixMode(_gl.TEXTURE)
-		with TransformList(color.units(origin, bbox) + color.transform):
-			_stencil_op(n, _gl.REPLACE)
-		_gl.MatrixMode(_gl.MODELVIEW)
+		for mask, func, stencil in [(_gl.FALSE, _gl.ALWAYS,   _stencil),
+		                            (_gl.TRUE,  _gl.NOTEQUAL, _stencil_replace)]:
+			_gl.ColorMask(mask, mask, mask, mask)
+			_gl.StencilFunc(func, 0, -1)
+			stencil(n)
 	return paint
 
 
@@ -367,10 +377,10 @@ class _Texture(_Paint):
 
 class _MaskContext(_Context):
 	textures = [0]
+	transforms = [Matrix()]
 	
 	def __init__(self, origin, size, texture_id):
-		self.origin = origin
-		self.size = size
+		self.transform = Matrix() * Translate(*origin) * Scale(*size)
 		self.texture_id = texture_id
 	
 	def __del__(self):
@@ -378,26 +388,17 @@ class _MaskContext(_Context):
 
 	def enter(self):
 		self.textures.append(self.texture_id)
+		self.transforms.append(self.transform)
 		_gl.ActiveTexture(_gl.TEXTURE1)
 		_gl.BindTexture(_gl.TEXTURE_2D, self.texture_id)
-		_gl.MatrixMode(_gl.TEXTURE)
-		_gl.PushMatrix()
-		_gl.LoadIdentity()
-		x, y = self.origin
-		w, h = self.size
-		_gl.Translate(x, y, 0.)
-		_gl.Scale(w, h, 1.)
 		_gl.ActiveTexture(_gl.TEXTURE0)
-		_gl.MatrixMode(_gl.MODELVIEW)
 
 	def exit(self):
 		assert self.textures.pop() == self.texture_id
+		assert self.transforms.pop() == self.transform
 		_gl.ActiveTexture(_gl.TEXTURE1)
 		_gl.BindTexture(_gl.TEXTURE_2D, self.textures[-1])
-		_gl.MatrixMode(_gl.TEXTURE)
-		_gl.PopMatrix()
 		_gl.ActiveTexture(_gl.TEXTURE0)
-		_gl.MatrixMode(_gl.MODELVIEW)
 
 
 # pserver ####################################################################
