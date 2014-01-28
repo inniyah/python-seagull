@@ -8,28 +8,13 @@ transforms
 
 from math import radians, cos, sin, hypot, degrees, atan2, tan
 
-from ..opengl import gl as _gl
-from ._common import _Context
+from ._common import _Base
 
 
 # transforms #################################################################
 
-class _Transform(_Context):
-	def enter(self):
-		_gl.PushMatrix()
-		self.render()
-		
-	def exit(self):
-		_gl.PopMatrix()
-
-
-class Pixels(_Transform):
-	def __init__(self, X=0, Y=0):
-		self.O = X, Y, 0
-		
-	def render(self):
-		_gl.LoadIdentity()
-		_gl.Translate(*self.O)
+class _Transform(_Base):
+	pass
 
 
 def _translate(x, y, tx=0, ty=0):
@@ -60,9 +45,6 @@ class Translate(_Transform):
 	def __init__(self, tx=0, ty=0):
 		self.tx, self.ty = tx, ty
 
-	def render(self):
-		_gl.Translate(self.tx, self.ty, 0)
-	
 	def unproject(self, x=0, y=0):
 		x, y = _translate(x, y, self.tx, self.ty)
 		return x, y
@@ -95,9 +77,6 @@ class Scale(_Transform):
 		self.sx = sx
 		self.sy = sy or sx
 		
-	def render(self):
-		_gl.Scale(self.sx, self.sy, 1.)
-	
 	def unproject(self, x=0, y=0):
 		x, y = _scale(x, y, self.sx, self.sy)
 		return x, y
@@ -131,11 +110,6 @@ class Rotate(_Transform):
 		self.a = a
 		self.cx, self.cy = cx, cy
 		
-	def render(self):
-		_gl.Translate(self.cx, self.cy, 0.)
-		_gl.Rotate(self.a, 0., 0., 1.)
-		_gl.Translate(-self.cx, -self.cy, 0.)
-	
 	def unproject(self, x=0, y=0):
 		x, y = _translate(x, y, -self.cx, -self.cy)
 		x, y = _rotate(x, y, self.a)
@@ -174,13 +148,6 @@ class SkewX(_Transform):
 	def __init__(self, ax=0.):
 		self.ax = ax
 	
-	def render(self):
-		t = tan(radians(self.ax))
-		_gl.MultMatrixf([1., 0., 0., 0.,
-		                 t,  1., 0., 0.,
-		                 0., 0., 1., 0.,
-		                 0., 0., 0., 1.])
-	
 	def unproject(self, x=0, y=0):
 		x, y = _shearx(x, y, self.ax)
 		return x, y
@@ -211,13 +178,6 @@ class SkewY(_Transform):
 	def __init__(self, ay=0.):
 		self.ay = ay
 	
-	def render(self):
-		t = tan(radians(self.ay))
-		_gl.MultMatrixf([1., t,  0., 0.,
-		                 0., 1., 0., 0.,
-		                 0., 0., 1., 0.,
-		                 0., 0., 0., 1.])
-
 	def unproject(self, x=0, y=0):
 		x, y = _sheary(x, y, self.ay)
 		return x, y
@@ -336,10 +296,6 @@ class TransformList(list, _Transform):
 	
 	def params(self):
 		return _params_from_matrix(*self.matrix())
-	
-	def render(self):
-		for transform in self:
-			transform.render()
 	
 	def unproject(self, x=0, y=0):
 		for transform in reversed(self):

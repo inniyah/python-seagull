@@ -11,7 +11,7 @@ from weakref import WeakValueDictionary as _weakdict
 from ...opengl.utils import OffscreenContext
 from .._common import _Element
 from ..paint import Color, _Texture, _MaskContext
-from ..transform import TransformList, Translate, Scale, Pixels
+from ..transform import TransformList, Translate, Scale
 
 
 # element ####################################################################
@@ -187,8 +187,7 @@ class Element(_Element):
 			                      (0., 0., 0., 0.)) as ((x, y), (width, height),
 			                                            mask_texture_id):
 				if mask_texture_id:
-					with mask_transforms:
-						mask.render(transforms+mask_transforms)
+					mask.render(transforms+mask_transforms)
 			
 			with _MaskContext((x, y), (width, height), mask_texture_id):
 				self.render(transforms, inheriteds,
@@ -201,15 +200,12 @@ class Element(_Element):
 					self.render(transforms, inheriteds,
 					            clipping=clipping, masking=masking, opacity=False)
 			
-			with Pixels():
-				Rectangle(x=x, y=y, width=width, height=height,
-				          fill=_Texture(elem_texture_id),
-				          fill_opacity=self.opacity).render()
+			Rectangle(x=x, y=y, width=width, height=height,
+			          fill=_Texture(elem_texture_id),
+			          fill_opacity=self.opacity).render()
 		
 		else:
-			_transform = TransformList(self._transform)
-			with _transform:
-				self._render(transforms + _transform, inheriteds)
+			self._render(transforms + self._transform, inheriteds)
 	
 	def _render(self, transforms, inheriteds):
 		raise NotImplementedError
