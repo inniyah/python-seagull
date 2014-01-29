@@ -25,21 +25,8 @@ def gl_preparer(clear_color=(1., 1., 1., 0.)):
 gl_prepare = gl_preparer()
 
 
-def gl_reshaper(depth=1, centered=False):
-	def reshape(width, height, depth=depth, centered=centered):
-		_gl.Viewport(0, 0, width, height)
-		
-		_gl.MatrixMode(_gl.PROJECTION)
-		_gl.LoadIdentity()
-		_gl.Ortho(0, width, height, 0, -depth, depth)
-		if centered:
-			_gl.Translate(width//2, height//2, 0)
-	
-		_gl.MatrixMode(_gl.MODELVIEW)
-		_gl.LoadIdentity()
-	return reshape
-
-gl_reshape = gl_reshaper()
+def gl_reshape(width, height):
+	_gl.Viewport(0, 0, width, height)
 
 
 def gl_displayer(*_elements):
@@ -87,7 +74,7 @@ def create_texture(width, height, data=None, format=_gl.RGBA, max_level=0,
 	
 	return texture_id
 
-class OffscreenContext(object):
+class OffscreenContext:
 	"""offscreen framebuffer context."""
 	fbos = []
 	origins = []
@@ -145,18 +132,11 @@ class OffscreenContext(object):
 			_gl.Clear(_gl.COLOR_BUFFER_BIT|_gl.STENCIL_BUFFER_BIT)
 			_gl.ClearColor(*_clear_color)
 
-		self.viewports.append(_gl.GetFloat(_gl.VIEWPORT))
-		_gl.Viewport(0, 0, width, height)
-	
-		_gl.MatrixMode(_gl.PROJECTION)
-		_gl.PushMatrix()
-		_gl.LoadIdentity()
-		_gl.Ortho(x_min, x_max, y_max, y_min, -1, 1)
-		_gl.MatrixMode(_gl.MODELVIEW)
-	
 		self.fbos.append((fb_ms, rb_color, rb_depth_stencil))
 		self.origins.append((x_min, y_min, x_max, y_max))
-
+		self.viewports.append(_gl.GetFloat(_gl.VIEWPORT))
+		_gl.Viewport(0, 0, width, height)
+		
 		self.texture_color = _gl.GenTextures(1)
 		return (x_min, y_min), (width, height), self.texture_color
 		
@@ -166,15 +146,10 @@ class OffscreenContext(object):
 		except AttributeError:
 			return
 		
+		_gl.Viewport(*self.viewports.pop())
 		fb_ms, rb_color, rb_depth_stencil = self.fbos.pop()
 		x_min, y_min, x_max, y_max = self.origins.pop()
 		width, height = x_max-x_min, y_max-y_min
-
-		_gl.MatrixMode(_gl.PROJECTION)
-		_gl.PopMatrix()
-		_gl.MatrixMode(_gl.MODELVIEW)
-
-		_gl.Viewport(*self.viewports.pop())
 
 		# fbo for texture
 		fb_texture = _gl.GenFramebuffers(1)

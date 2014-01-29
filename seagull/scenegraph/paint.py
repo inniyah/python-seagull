@@ -8,7 +8,8 @@ paint servers
 # imports ####################################################################
 
 from ..opengl import gl as _gl
-from ..opengl.utils import (create_shader, create_program, set_uniform)
+from ..opengl.utils import (create_shader, create_program, set_uniform,
+                            OffscreenContext)
 from ._common import _Element, _Context
 
 from .transform import TransformList, Translate, Scale, Matrix
@@ -22,9 +23,13 @@ _ATTRIB_LOCATIONS = {
 
 _VERT_SHADER = """
 	attribute vec2 vertex;
+	
 	uniform vec3 color;
 	uniform float alpha;
-	uniform mat3 transform;
+	
+	uniform mat3 projection_transform;
+	uniform mat3 modelview_transform;
+	
 	uniform mat3 paint_transform;
 	uniform mat3 mask_transform;
 	
@@ -32,10 +37,10 @@ _VERT_SHADER = """
 	varying vec2 mask_coord;
 	
 	void main() {
-		vec3 pixel_position = transform * vec3(vertex, 1.);
-		gl_Position = gl_ProjectionMatrix * vec4(pixel_position.xy, 0., 1.);
+		vec3 pixel_position = modelview_transform * vec3(vertex, 1.);
 		paint_coord = (paint_transform * vec3(vertex, 1.)).xy;
 		mask_coord = (mask_transform * pixel_position).xy;
+		gl_Position = vec4((projection_transform * pixel_position).xy, 0., 1.);
 		gl_FrontColor = vec4(color, alpha);
 	}
 """
@@ -223,6 +228,13 @@ def _create(name, **default_uniforms):
 		global _current_program, _current_uniforms
 		uniforms = dict(default_uniforms)
 		uniforms.update(kwargs)
+		try:
+			l, t, r, b = OffscreenContext.origins[-1]
+		except IndexError:
+			l, t, r, b = _gl.GetInteger(_gl.VIEWPORT)
+		w, h = r-l, t-b
+		projection_transform = Matrix(2./w, 0., 0., 2./h, -(r+l)/w, -(t+b)/h)
+		uniforms["projection_transform"] = projection_transform
 		uniforms["mask_transform"] = _MaskContext.transforms[-1].inverse()
 		uniforms["masking"] = [len(_MaskContext.textures) > 1]
 
@@ -302,11 +314,11 @@ def _stencil_nonzero(n):
 
 def _make_paint(_stencil):
 	def paint(color, alpha, data, transforms, origin, bbox):
-		transform = Matrix(*transforms.matrix())
+		modelview_transform = Matrix(*transforms.matrix())
 		paint_transform = Matrix(*TransformList(color.units(origin, bbox) +
 		                                        color.transform).matrix()).inverse()
 		color._use_program(color=[color.rgb], alpha=[float(alpha)],
-		                   transform=transform,
+		                   modelview_transform=modelview_transform,
 		                   paint_transform=paint_transform)
 		n, vertices = data
 		_gl.VertexAttribPointer(_ATTRIB_LOCATIONS[b"vertex"], 2, _gl.FLOAT,
