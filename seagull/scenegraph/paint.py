@@ -33,15 +33,16 @@ _VERT_SHADER = """
 	uniform mat3 paint_transform;
 	uniform mat3 mask_transform;
 	
+	varying vec4 front_color;
 	varying vec2 paint_coord;
 	varying vec2 mask_coord;
 	
 	void main() {
+		front_color = vec4(color, alpha);
 		vec3 pixel_position = modelview_transform * vec3(vertex, 1.);
 		paint_coord = (paint_transform * vec3(vertex, 1.)).xy;
 		mask_coord = (mask_transform * pixel_position).xy;
 		gl_Position = vec4((projection_transform * pixel_position).xy, 0., 1.);
-		gl_FrontColor = vec4(color, alpha);
 	}
 """
 
@@ -51,6 +52,7 @@ _MAIN_FRAG_SHADER = """
 	
 	const vec4 luminance = vec4(.2125, .7154, .0721, 0.);
 	
+	varying vec4 front_color;
 	varying vec2 mask_coord;
 	
 	vec4 color(); // filling color
@@ -60,7 +62,7 @@ _MAIN_FRAG_SHADER = """
 		if(masking) {
 			color.a *= dot(luminance, texture2D(mask, mask_coord));
 		}
-		gl_FragColor = gl_Color * color;
+		gl_FragColor = front_color * color;
 	}
 """
 
