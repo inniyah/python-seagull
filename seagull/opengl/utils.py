@@ -27,6 +27,7 @@ gl_prepare = gl_preparer()
 
 def gl_reshape(width, height):
 	_gl.Viewport(0, 0, width, height)
+	OffscreenContext.orthos = [(0, width, height, 0)]
 
 
 def gl_displayer(*_elements):
@@ -76,9 +77,8 @@ def create_texture(width, height, data=None, format=_gl.RGBA, max_level=0,
 
 class OffscreenContext:
 	"""offscreen framebuffer context."""
-	fbos = []
-	origins = []
-	viewports = []
+	fbos = [(0, None, None)]
+	orthos = [None]
 	
 	def __init__(self, aabbox, bg_color=None):
 		self.samples = _gl.GetInteger(_gl.SAMPLES)
@@ -90,13 +90,8 @@ class OffscreenContext:
 		if x_max <= x_min or y_max <= y_min:
 			return (0, 0), (0, 0), 0
 		
-		try:
-			self.fb_background, _, _ = self.fbos[-1]
-			X_min, Y_min, X_max, Y_max = self.origins[-1]
-		except IndexError:
-			self.fb_background = 0
-			X, Y, W, H = _gl.GetInteger(_gl.VIEWPORT)
-			X_min, Y_min, X_max, Y_max = X, Y, X+W, Y+H
+		self.fb_background, _, _ = self.fbos[-1]
+		X_min, X_max, Y_max, Y_min = self.orthos[-1]
 
 		x_min, x_max = max(int(floor(x_min-1)), X_min), min(int(ceil(x_max+1)), X_max)
 		y_min, y_max = max(int(floor(y_min-1)), Y_min), min(int(ceil(y_max+1)), Y_max)
@@ -104,6 +99,8 @@ class OffscreenContext:
 		width, height = x_max-x_min, y_max-y_min
 		if width <= 0 or height <= 0:
 			return (0, 0), (0, 0), 0
+
+		_gl.Viewport(0, 0, width, height)
 
 		# fbo with multisample render buffer
 		fb_ms = _gl.GenFramebuffers(1)
@@ -133,9 +130,7 @@ class OffscreenContext:
 			_gl.ClearColor(*_clear_color)
 
 		self.fbos.append((fb_ms, rb_color, rb_depth_stencil))
-		self.origins.append((x_min, y_min, x_max, y_max))
-		self.viewports.append(_gl.GetFloat(_gl.VIEWPORT))
-		_gl.Viewport(0, 0, width, height)
+		self.orthos.append((x_min, x_max, y_max, y_min))
 		
 		self.texture_color = _gl.GenTextures(1)
 		return (x_min, y_min), (width, height), self.texture_color
@@ -146,9 +141,8 @@ class OffscreenContext:
 		except AttributeError:
 			return
 		
-		_gl.Viewport(*self.viewports.pop())
 		fb_ms, rb_color, rb_depth_stencil = self.fbos.pop()
-		x_min, y_min, x_max, y_max = self.origins.pop()
+		x_min, x_max, y_max, y_min = self.orthos.pop()
 		width, height = x_max-x_min, y_max-y_min
 
 		# fbo for texture
@@ -178,6 +172,9 @@ class OffscreenContext:
 		_gl.DeleteFramebuffers(2, (_gl.uint * 2)(fb_ms, fb_texture))
 
 		_gl.BindFramebuffer(_gl.DRAW_FRAMEBUFFER, self.fb_background)
+
+		x_min, x_max, y_max, y_min = self.orthos[-1]
+		_gl.Viewport(0, 0, x_max-x_min, y_max-y_min)
 
 
 # shaders ####################################################################

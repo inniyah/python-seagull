@@ -203,7 +203,12 @@ class Matrix:
 	def __init__(self, a=1., b=0., c=0., d=1., e=0., f=0.):
 		self.a, self.c, self.e = a, c, e
 		self.b, self.d, self.f = b, d, f
-
+	
+	@classmethod
+	def ortho(Cls, left, right, bottom, top):
+		width, height = right-left, top-bottom
+		return Cls(2./width, 0., 0., 2./height, -(left+right)/width, -(bottom+top)/height)
+	
 	@property
 	def matrix(self):
 		return [[self.a, self.c, self.e],

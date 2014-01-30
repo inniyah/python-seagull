@@ -230,12 +230,7 @@ def _create(name, **default_uniforms):
 		global _current_program, _current_uniforms
 		uniforms = dict(default_uniforms)
 		uniforms.update(kwargs)
-		try:
-			l, t, r, b = OffscreenContext.origins[-1]
-		except IndexError:
-			l, t, r, b = _gl.GetInteger(_gl.VIEWPORT)
-		w, h = r-l, t-b
-		projection_transform = Matrix(2./w, 0., 0., 2./h, -(r+l)/w, -(t+b)/h)
+		projection_transform = Matrix.ortho(*OffscreenContext.orthos[-1])
 		uniforms["projection_transform"] = projection_transform
 		uniforms["mask_transform"] = _MaskContext.transforms[-1].inverse()
 		uniforms["masking"] = [len(_MaskContext.textures) > 1]
