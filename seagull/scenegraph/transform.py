@@ -102,7 +102,7 @@ class Scale(_Transform):
 
 	
 class Rotate(_Transform):
-	tag = "translate"
+	tag = "rotate"
 	attributes = ["a", "cx", "cy"]
 	_state_attributes = _Transform._state_attributes + attributes
 	
