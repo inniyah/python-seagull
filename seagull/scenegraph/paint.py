@@ -231,7 +231,7 @@ def _create(name, **default_uniforms):
 		uniforms = dict(default_uniforms)
 		uniforms.update(kwargs)
 		uniforms["projection_transform"] = Ortho(*OffscreenContext.orthos[-1])
-		uniforms["mask_transform"] = _MaskContext.transforms[-1].inverse()
+		uniforms["mask_transform"] = _MaskContext.transforms[-1]
 		uniforms["masking"] = [len(_MaskContext.textures) > 1]
 
 		program = _program(name)
@@ -274,11 +274,10 @@ def _stop(o, c, a=1.):
 
 def _object_bbox(origin, bbox):
 	(x_min, y_min), (x_max, y_max) = bbox
-	return Stretch(x_min, y_min, x_max-x_min, y_max-y_min)
+	return Stretch(x_min, y_min, x_max-x_min, y_max-y_min).inverse()
 
 def _user_space(origin, bbox):
-	x, y = origin
-	return Translate(-x, -y)
+	return Translate(*origin)
 
 
 _UNITS = {
@@ -312,8 +311,8 @@ def _make_paint(_stencil):
 	def paint(color, alpha, data, transforms, origin, bbox):
 		color._use_program(color=[color.rgb], alpha=[float(alpha)],
 		                   modelview_transform=transforms,
-		                   paint_transform=product(color.units(origin, bbox),
-		                                          *color.transform).inverse())
+		                   paint_transform=product(*color.transform).inverse()*
+		                                   color.units(origin, bbox))
 		n, vertices = data
 		_gl.VertexAttribPointer(_ATTRIB_LOCATIONS[b"vertex"], 2, _gl.FLOAT,
 		                        False, 0, vertices)
@@ -391,7 +390,7 @@ class _MaskContext(_Context):
 	def __init__(self, origin, size, texture_id):
 		x, y = origin
 		width, height = size
-		self.transform = Stretch(x, y, width, height)
+		self.transform = Stretch(x, y, width, height).inverse()
 		self.texture_id = texture_id
 	
 	def __del__(self):
