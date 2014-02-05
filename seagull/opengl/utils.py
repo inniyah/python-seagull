@@ -231,7 +231,7 @@ _Uniforms = {
 def set_uniform(program, uniform, values):
 	if uniform.endswith("transform"):
 		_gl.UniformMatrix3fv(location(program, uniform), 1, _gl.FALSE,
-		                     values.t())
+		                     values.column_major())
 	else:
 		v0, n = values[0], len(values)
 		if isinstance(v0, tuple):

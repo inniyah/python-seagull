@@ -88,7 +88,7 @@ class Text(Element):
 		}[self.text_anchor]
 	
 	def _aabbox(self, transforms, inheriteds):
-		return self._text_bbox.aabbox(transforms + [Translate(self._anchor())], inheriteds)
+		return self._text_bbox.aabbox(transforms * Translate(self._anchor()), inheriteds)
 	
 	def _render(self, transforms, inheriteds):
 		font_size = self.font_size

@@ -31,22 +31,22 @@ class _Base(object):
 	
 	_state_attributes = []
 	def _state(self):
-		return dict((name, getattr(self, name)) for name in self._state_attributes)
+		return dict((name, getattr(self, name))
+		            for name in self._state_attributes)
 	def __eq__(self, other):
 		try:
 			return self._state() == other._state()
 		except AttributeError:
 			return False
-	def __ne__(self, other): return self._state() != other._state()
+	def __ne__(self, other): return not self.__eq__(other)
 	def __hash__(self): return hash(self._state())
 
 
 class _Element(_Base):
 	"""element with xml serialization support"""
 	
-	attributes = []
-	
 	_state_attributes = ["tag"]
+	attributes = []
 	
 	def _xml(self, defs):
 		"""xml serialization"""

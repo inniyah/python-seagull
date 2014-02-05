@@ -18,6 +18,7 @@ from OpenGL.GLUT import *
 from seagull import scenegraph as sg
 from seagull.xml import parse, serialize
 from seagull.opengl.utils import gl_prepare, gl_reshape, gl_display
+from seagull.scenegraph.transform import normalized
 
 
 # scene ######################################################################
@@ -115,7 +116,7 @@ def motion(x1, y1):
 	
 	elem = path[-1]
 	elem.transform += transformation
-	elem.transform = elem.transform.normalized()
+	elem.transform = normalized(elem.transform)
 	
 	x0, y0 = x1, y1
 	glutPostRedisplay()

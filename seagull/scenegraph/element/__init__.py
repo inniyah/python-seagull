@@ -11,7 +11,7 @@ from weakref import WeakValueDictionary as _weakdict
 from ...opengl.utils import OffscreenContext
 from .._common import _Element
 from ..paint import Color, _Texture, _MaskContext
-from ..transform import TransformList, Translate, Scale
+from ..transform import Matrix, Translate, Scale, product
 
 
 # element ####################################################################
@@ -71,8 +71,7 @@ _INHERITEDS = {
 
 class Element(_Element):
 	x, y = 0, 0
-
-	_transform_list = None
+	transform = None
 
 	opacity = 1.
 	clip_path = None
@@ -82,12 +81,6 @@ class Element(_Element):
 		"x", "y", "transform",
 		"opacity", "clip_path", "mask"
 	]
-	
-	def _get_transform(self):
-		return self._transform_list
-	def _set_transform(self, transform):
-		self._transform_list = TransformList(transform)
-	transform = property(_get_transform, _set_transform)
 	
 	def __init__(self, **attributes):
 		self._attributes = set()
@@ -132,11 +125,7 @@ class Element(_Element):
 	
 	@property
 	def _transform(self):
-		if (self.x, self.y) == (0., 0.):
-			transform = self.transform
-		else:
-			transform = self.transform + [Translate(self.x, self.y)]
-		return transform
+		return product(*self.transform) * Translate(self.x, self.y)
 	
 	def project(self, x=0, y=0):
 		return self._transform.project(x, y)
@@ -144,9 +133,9 @@ class Element(_Element):
 	
 	# axis-aligned bounding box
 	
-	def aabbox(self, transforms=TransformList(), inheriteds=_INHERITEDS):
+	def aabbox(self, transforms=Matrix(), inheriteds=_INHERITEDS):
 		inheriteds = self._inherit(inheriteds)
-		return self._aabbox(transforms + self._transform, inheriteds)
+		return self._aabbox(transforms * self._transform, inheriteds)
 	
 	def _aabbox(self, transforms, inheriteds):
 		raise NotImplementedError
@@ -154,13 +143,13 @@ class Element(_Element):
 	def _units(self, elem, attr, default="userSpaceOnUse"):
 		units = getattr(elem, attr, default)
 		if units == "userSpaceOnUse":
-			transform = []
+			transform = Matrix()
 		elif units == "objectBoundingBox":
 			(x_min, y_min), (x_max, y_max) = self.aabbox()
-			transform = [Translate(x_min, y_min), Scale(x_max-x_min, y_max-y_min)]
+			transform = Translate(x_min, y_min) * Scale(x_max-x_min, y_max-y_min)
 		else:
 			raise ValueError("unknown units %s" % units)
-		return self.transform + transform
+		return product(*self.transform) * transform
 	
 	
 	# rendering
@@ -170,7 +159,7 @@ class Element(_Element):
 			return self.color
 		return color
 	
-	def render(self, transforms=TransformList(), inheriteds=_INHERITEDS,
+	def render(self, transforms=Matrix(), inheriteds=_INHERITEDS,
 	                 clipping=True, masking=True, opacity=True):
 		inheriteds = self._inherit(inheriteds)
 		
@@ -183,11 +172,11 @@ class Element(_Element):
 				mask, units = self.mask, "maskContentUnits"
 			
 			mask_transforms = self._units(mask, units)
-			with OffscreenContext(mask.aabbox(transforms+mask_transforms),
+			with OffscreenContext(mask.aabbox(transforms*mask_transforms),
 			                      (0., 0., 0., 0.)) as ((x, y), (width, height),
 			                                            mask_texture_id):
 				if mask_texture_id:
-					mask.render(transforms+mask_transforms)
+					mask.render(transforms*mask_transforms)
 			
 			with _MaskContext((x, y), (width, height), mask_texture_id):
 				self.render(transforms, inheriteds,
@@ -205,7 +194,7 @@ class Element(_Element):
 			          fill_opacity=self.opacity).render()
 		
 		else:
-			self._render(transforms + self._transform, inheriteds)
+			self._render(transforms*self._transform, inheriteds)
 	
 	def _render(self, transforms, inheriteds):
 		raise NotImplementedError
@@ -216,9 +205,9 @@ class Element(_Element):
 	def _hit_test(self, x, y, transforms):
 		return False
 	
-	def pick(self, x=0, y=0, transforms=TransformList()):
+	def pick(self, x=0, y=0, transforms=Matrix()):
 		p = x, y = self.project(x, y)
-		transforms = transforms + self._transform
+		transforms = transforms * self._transform
 		hits = [([self], p)] if self._hit_test(x, y, transforms) else []
 		hits += [([self] + e, p) for e, p in self._pick_content(x, y, transforms)]
 		return hits

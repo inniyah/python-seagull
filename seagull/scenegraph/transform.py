@@ -11,255 +11,183 @@ from math import radians, cos, sin, hypot, degrees, atan2, tan
 from ._common import _Base
 
 
+# 2d linear algebra ##########################################################
+
+def _mul(p_abcdef, q_abcdef):
+	pa, pb, pc, pd, pe, pf = p_abcdef
+	qa, qb, qc, qd, qe, qf = q_abcdef
+	a, c, e = pa*qa+pc*qb, pa*qc+pc*qd, pa*qe+pc*qf+pe
+	b, d, f = pb*qa+pd*qb, pb*qc+pd*qd, pb*qe+pd*qf+pf
+	return a, b, c, d, e, f
+
+def _project(x, y, a, b, c, d, e, f):
+	return a*x+c*y+e, b*x+d*y+f
+
+
 # transforms #################################################################
 
 class _Transform(_Base):
-	pass
-
-
-def _translate(x, y, tx=0, ty=0):
-	return x+tx, y+ty
-
-def _scale(x, y, sx=1., sy=1.):
-	return x*sx, y*sy
+	_state_attributes = ["tag"]
+	attributes = []
 	
-def _rotate(x, y, a=0.):
-	a = radians(a)
-	c, s = cos(a), sin(a)
-	return x*c - y*s, x*s + y*c
+	def project(self, x=0, y=0):
+		return _project(x, y, *self.inverse().abcdef)
+	
+	def unproject(self, x=0., y=0.):
+		return _project(x, y, *self.abcdef)
+	
+	def __mul__(self, other):
+		return Matrix(*_mul(self.abcdef, other.abcdef))
+	
+	def params(self, error=1e-6):
+		"""separate translation, rotation, shear and scale"""
+		a, b, c, d, e, f = self.abcdef
+		tx, ty = e, f
+		
+		if abs(b*c) < error:
+			cosa, sina = 1., 0.
+			sx, hy = a, b
+			hx, sy = c, d
+		else:
+			sign = 1. if a*d>=b*c else -1.
+			cosa, sina = a+sign*d, b-sign*c
+			h = hypot(cosa, sina)
+			cosa, sina = cosa/h, sina/h
+			sx, hy = a*cosa + b*sina, b*cosa - a*sina
+			hx, sy = c*cosa + d*sina, d*cosa - c*sina
+			sx -= hx*hy/sy
+		return (tx, ty), (cosa, sina), (hx, hy), (sx, sy)
 
-def _shearx(x, y, ax=0.):
-	t = tan(radians(ax))
-	return x + t*y, y
+	def column_major(self):
+		a, b, c, d, e, f = self.abcdef
+		return (a, b, 0., c, d, 0., e, f, 1.)
 
-def _sheary(x, y, ay=0.):
-	t = tan(radians(ay))
-	return x, y + t*x
+	def __str__(self):
+		return "%s(" % self.tag + \
+		       ",".join(str(getattr(self, a)) for a in self.attributes) + \
+		       ")"
 
 
 class Translate(_Transform):
-	_state_attributes = _Transform._state_attributes + [
-		"tx", "ty",
-	]
+	tag = "translate"
+	attributes = ["tx", "ty"]
+	_state_attributes = _Transform._state_attributes + attributes
 	
 	def __init__(self, tx=0, ty=0):
 		self.tx, self.ty = tx, ty
 
-	def unproject(self, x=0, y=0):
-		x, y = _translate(x, y, self.tx, self.ty)
-		return x, y
-
-	def project(self, x=0, y=0):
-		x, y = _translate(x, y, -self.tx, -self.ty)
-		return x, y
-		
-	def inverted(self):
+	def inverse(self):
 		return Translate(-self.tx, -self.ty)
 	
 	@property
-	def matrix(self):
-		return [[1., 0., self.tx],
-		        [0., 1., self.ty],
-		        [0., 0.,      1.]]
-	
-	def __str__(self):
-		return "translate(" + \
-		       ",".join(str(t) for t in [self.tx, self.ty]) + \
-		       ")"
+	def abcdef(self):
+		return 1., 0., 0., 1., self.tx, self.ty
 
 
 class Scale(_Transform):
-	_state_attributes = _Transform._state_attributes + [
-		"sx", "sy",
-	]
+	tag = "scale"
+	attributes = ["sx", "sy"]
+	_state_attributes = _Transform._state_attributes + attributes
 	
 	def __init__(self, sx=1., sy=None):
 		self.sx = sx
 		self.sy = sy or sx
-		
-	def unproject(self, x=0, y=0):
-		x, y = _scale(x, y, self.sx, self.sy)
-		return x, y
-
-	def project(self, x=0, y=0):
-		x, y = _scale(x, y, 1./self.sx, 1./self.sy)
-		return x, y
-
-	def inverted(self):
+	
+	def inverse(self):
 		return Scale(1./self.sx, 1./self.sy)
 	
 	@property
-	def matrix(self):
-		return [[self.sx, 0.,      0.],
-		        [0.,      self.sy, 0.],
-		        [0.,      0.,      1.]]
-	
-	def __str__(self):
-		return "scale(" + \
-		       ",".join(str(t) for t in [self.sx, self.sy]) + \
-		       ")"
+	def abcdef(self):
+		return self.sx, 0., 0., self.sy, 0., 0.
 
 	
 class Rotate(_Transform):
-	_state_attributes = _Transform._state_attributes + [
-		"a",
-		"cx", "cy",
-	]
+	tag = "translate"
+	attributes = ["a", "cx", "cy"]
+	_state_attributes = _Transform._state_attributes + attributes
 	
 	def __init__(self, a=0, cx=0, cy=0):
 		self.a = a
 		self.cx, self.cy = cx, cy
-		
-	def unproject(self, x=0, y=0):
-		x, y = _translate(x, y, -self.cx, -self.cy)
-		x, y = _rotate(x, y, self.a)
-		x, y = _translate(x, y, self.cx, self.cy)
-		return x, y
 
-	def project(self, x=0, y=0):
-		x, y = _translate(x, y, -self.cx, -self.cy)
-		x, y = _rotate(x, y, -self.a)
-		x, y = _translate(x, y, self.cx, self.cy)
-		return x, y
-
-	def inverted(self):
+	def inverse(self):
 		return Rotate(-self.a, self.cx, self.cy)
 	
 	@property
-	def matrix(self):
+	def abcdef(self):
 		a, cx, cy = radians(self.a), self.cx, self.cy
 		c, s = cos(a), sin(a)
-		return [[c, -s,  cx*(c-1.)-cy*s],
-		        [s,  c,  cy*(c-1.)+cx*s],
-		        [0., 0.,             1.]]
-	
-	def __str__(self):
-		return "rotate(" + \
-		       ",".join(str(t) for t in [self.a,
-			                              self.cx, self.cy]) + \
-		       ")"
+		return c, s, -s, c, cx*(1.-c)+cy*s, cy*(1.-c)-cx*s
 
 
 class SkewX(_Transform):
-	_state_attributes = _Transform._state_attributes + [
-		"ax",
-	]
+	tag = "skewX"
+	attributes = ["ax"]
+	_state_attributes = _Transform._state_attributes + attributes
 	
 	def __init__(self, ax=0.):
 		self.ax = ax
-	
-	def unproject(self, x=0, y=0):
-		x, y = _shearx(x, y, self.ax)
-		return x, y
-	
-	def project(self, x=0, y=0):
-		x, y = _shearx(x, y, -self.ax)
-		return x, y
 
-	def inverted(self):
+	def inverse(self):
 		return SkewX(-self.ax)
 	
 	@property
-	def matrix(self):
+	def abcdef(self):
 		t = tan(radians(self.ax))
-		return [[1., t,  0.],
-		        [0., 1., 0.],
-		        [0., 0., 1.]]
-	
-	def __str__(self):
-		return "skewX(%s)" % self.ax
+		return 1., 0., t, 1., 0., 0.
 
 
 class SkewY(_Transform):
-	_state_attributes = _Transform._state_attributes + [
-		"ay",
-	]
+	tag = "skewY"
+	attributes = ["ay"]
+	_state_attributes = _Transform._state_attributes + attributes
 	
 	def __init__(self, ay=0.):
 		self.ay = ay
-	
-	def unproject(self, x=0, y=0):
-		x, y = _sheary(x, y, self.ay)
-		return x, y
-	
-	def project(self, x=0, y=0):
-		x, y = _sheary(x, y, -self.ay)
-		return x, y
 
-	def inverted(self):
+	def inverse(self):
 		return SkewY(-self.ay)
 	
 	@property
-	def matrix(self):
+	def abcdef(self):
 		t = tan(radians(self.ay))
-		return [[1., 0., 0.],
-		        [t,  1., 0.],
-		        [0., 0., 1.]]
-	
-	def __str__(self):
-		return "skewY(%s)" % self.ay
+		return 1., t, 0., 1., 0., 0.
 
-class Matrix:
+
+class Matrix(_Transform):
+	tag = "matrix"
+	attributes = ["a", "b", "c", "d", "e", "f"]
+	_state_attributes = _Transform._state_attributes + attributes
+	
 	def __init__(self, a=1., b=0., c=0., d=1., e=0., f=0.):
 		self.a, self.c, self.e = a, c, e
 		self.b, self.d, self.f = b, d, f
 	
-	@classmethod
-	def ortho(Cls, left, right, bottom, top):
-		width, height = right-left, top-bottom
-		return Cls(2./width, 0., 0., 2./height, -(left+right)/width, -(bottom+top)/height)
-	
-	@property
-	def matrix(self):
-		return [[self.a, self.c, self.e],
-		        [self.b, self.d, self.f],
-		        [0.,     0.,     1.]]
-	
-	def __mul__(self, other):
-		(sa, sc, se), (sb, sd, sf), _ = self.matrix
-		(oa, oc, oe), (ob, od, of), _ = other.matrix
-		a, c, e = sa*oa+sc*ob, sa*oc+sc*od, sa*oe+sc*of+se
-		b, d, f = sb*oa+sd*ob, sb*oc+sd*od, sb*oe+sd*of+sf
-		return Matrix(a, b, c, d, e, f)
-	
-	def __imul__(self, other):
-		(sa, sc, se), (sb, sd, sf), _ = self.matrix
-		(oa, oc, oe), (ob, od, of), _ = other.matrix
-		self.a, self.c, self.e = sa*oa+sc*ob, sa*oc+sc*od, sa*oe+sc*of+se
-		self.b, self.d, self.f = sb*oa+sd*ob, sb*oc+sd*od, sb*oe+sd*of+sf
-		return self
+	def get_abcdef(self):
+		return self.a, self.b, self.c, self.d, self.e, self.f
+	def set_abcdef(self, abcdef):
+		self.a, self.b, self.c, self.d, self.e, self.f = abcdef
+	abcdef = property(get_abcdef, set_abcdef)
 	
 	def inverse(self):
-		(a, c, e), (b, d, f), _ = self.matrix
+		a, b, c, d, e, f = self.abcdef
 		try:
 			idet = 1./(a*d-b*c)
 		except ZeroDivisionError:
 			return Matrix()
 		return Matrix(*(idet*u for u in (d, -b, -c, a, c*f-e*d, b*d-a*f)))
 
-	def t(self):
-		return (self.a, self.b, 0.,
-		        self.c, self.d, 0.,
-		        self.e, self.f, 1.)
 
+def ortho(left, right, bottom, top):
+	width, height = right-left, top-bottom
+	a, c, e = 2./width, 0.,        -(left+right)/width
+	b, d, f = 0.,       2./height, -(bottom+top)/height
+	return Matrix(a, b, c, d, e, f)
 
-def _params_from_matrix(a, b, c, d, e, f, error=1e-6):
-	"""separate translation, rotation, shear and scale"""
-	tx, ty = e, f
-
-	if abs(b*c) < error:
-		cosa, sina = 1., 0.
-		sx, hy = a, b
-		hx, sy = c, d
-	else:
-		sign = 1. if a*d>=b*c else -1.
-		cosa, sina = a+sign*d, b-sign*c
-		h = hypot(cosa, sina)
-		cosa, sina = cosa/h, sina/h
-		sx, hy = a*cosa + b*sina, b*cosa - a*sina
-		hx, sy = c*cosa + d*sina, d*cosa - c*sina
-		sx -= hx*hy/sy
-	return (tx, ty), (cosa, sina), (hx, hy), (sx, sy)
+def product(p=Matrix(), *qs):
+	for q in qs:
+		p = p * q
+	return p
 
 
 def _list_from_params(t, r, sk, s, error=1e-6):
@@ -277,46 +205,5 @@ def _list_from_params(t, r, sk, s, error=1e-6):
 		transforms.append(Scale(sx, sy))
 	return transforms
 
-
-def _list_from_matrix(a, b, c, d, e, f, error=1e-6):
-	return _list_from_params(*_params_from_matrix(a, b, c, d, e, f, error),
-	                         error=error)
-
-
-class TransformList(list, _Transform):
-	@classmethod
-	def from_matrix(Cls, a=1., b=0., c=0., d=1., e=0., f=0.):
-		return Cls(_list_from_matrix(a, b, c, d, e, f))
-	
-	@classmethod
-	def from_params(Cls, t=(0., 0.), r=(1., 0.), sk=(0., 0.), s=(1., 1.)):
-		return Cls(_list_from_params(t, r, sk, s))
-	
-	def matrix(self):
-		ox, oy = self.unproject(0, 0)
-		xx, xy = self.unproject(1, 0)
-		yx, yy = self.unproject(0, 1)
-		a, b, c, d, e, f = xx-ox, xy-oy, yx-ox, yy-oy, ox, oy
-		return a, b, c, d, e, f
-	
-	def params(self):
-		return _params_from_matrix(*self.matrix())
-	
-	def unproject(self, x=0, y=0):
-		for transform in reversed(self):
-			x, y = transform.unproject(x, y)
-		return x, y
-
-	def project(self, x=0, y=0):
-		for transform in self:
-			x, y = transform.project(x, y)
-		return x, y
-	
-	def inverted(self):
-		return TransformList(t.inverted() for t in reversed(self))
-	
-	def normalized(self):
-		return self.from_matrix(*self.matrix())
-
-	def __add__(self, l):
-		return TransformList(list(self) + l)
+def normalized(transform):
+	return _list_from_params(*product(*transform).params())

@@ -117,7 +117,7 @@ _SCALE_STEP  = 1.2
 def _du2(transforms):
 	"""square of the size of a pixel in local coordinates."""
 	try:
-		a, b, c, d, _, _ = transforms.matrix()
+		a, b, c, d, _, _ = transforms.abcdef
 	except ZeroDivisionError:
 		return 1.
 	else:

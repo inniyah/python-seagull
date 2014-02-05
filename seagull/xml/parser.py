@@ -176,7 +176,7 @@ def transform(v):
 		"scale":     sg.Scale,
 		"skewX":     sg.SkewX,
 		"skewY":     sg.SkewY,
-		"matrix":    sg.TransformList.from_matrix,
+		"matrix":    sg.Matrix,
 	}[transform]
 	return Transform(*(number(u) for u in v.split()))
 

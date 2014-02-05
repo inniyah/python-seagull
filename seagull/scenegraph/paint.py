@@ -12,7 +12,7 @@ from ..opengl.utils import (create_shader, create_program, set_uniform,
                             OffscreenContext)
 from ._common import _Element, _Context
 
-from .transform import TransformList, Translate, Scale, Matrix
+from .transform import Translate, Scale, Matrix, ortho, product
 
 
 # shaders ####################################################################
@@ -230,8 +230,7 @@ def _create(name, **default_uniforms):
 		global _current_program, _current_uniforms
 		uniforms = dict(default_uniforms)
 		uniforms.update(kwargs)
-		projection_transform = Matrix.ortho(*OffscreenContext.orthos[-1])
-		uniforms["projection_transform"] = projection_transform
+		uniforms["projection_transform"] = ortho(*OffscreenContext.orthos[-1])
 		uniforms["mask_transform"] = _MaskContext.transforms[-1].inverse()
 		uniforms["masking"] = [len(_MaskContext.textures) > 1]
 
@@ -275,11 +274,11 @@ def _stop(o, c, a=1.):
 
 def _object_bbox(origin, bbox):
 	(x_min, y_min), (x_max, y_max) = bbox
-	return [Translate(x_min, y_min), Scale(x_max-x_min, y_max-y_min)]
+	return Translate(x_min, y_min) * Scale(x_max-x_min, y_max-y_min)
 
 def _user_space(origin, bbox):
 	x, y = origin
-	return [Translate(-x, -y)]
+	return Translate(-x, -y)
 
 
 _UNITS = {
@@ -311,12 +310,10 @@ def _stencil_nonzero(n):
 
 def _make_paint(_stencil):
 	def paint(color, alpha, data, transforms, origin, bbox):
-		modelview_transform = Matrix(*transforms.matrix())
-		paint_transform = Matrix(*TransformList(color.units(origin, bbox) +
-		                                        color.transform).matrix()).inverse()
 		color._use_program(color=[color.rgb], alpha=[float(alpha)],
-		                   modelview_transform=modelview_transform,
-		                   paint_transform=paint_transform)
+		                   modelview_transform=transforms,
+		                   paint_transform=product(color.units(origin, bbox),
+		                                          *color.transform).inverse())
 		n, vertices = data
 		_gl.VertexAttribPointer(_ATTRIB_LOCATIONS[b"vertex"], 2, _gl.FLOAT,
 		                        False, 0, vertices)
@@ -392,7 +389,7 @@ class _MaskContext(_Context):
 	transforms = [Matrix()]
 	
 	def __init__(self, origin, size, texture_id):
-		self.transform = Matrix() * Translate(*origin) * Scale(*size)
+		self.transform = Translate(*origin) * Scale(*size)
 		self.texture_id = texture_id
 	
 	def __del__(self):
