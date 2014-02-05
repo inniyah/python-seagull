@@ -115,13 +115,10 @@ _WIDTH_LIMIT = 1.
 _SCALE_STEP  = 1.2
 
 def _du2(transforms):
-	"""square of the size of a pixel in local coordinates."""
-	try:
-		a, b, c, d, _, _ = transforms.abcdef
-	except ZeroDivisionError:
-		return 1.
-	else:
-		return sum(u*u for u in [a, b, c, d])
+	"""surface of a pixel in local coordinates."""
+	a, b, c, d, _, _ = transforms.abcdef
+	return a*d-b*c
+
 
 def _scale_index(du2, scale_step=_SCALE_STEP):
 	"""log discretization of the scale suitable as key for hashing cache."""
