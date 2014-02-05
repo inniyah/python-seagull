@@ -171,11 +171,11 @@ class Matrix(_Transform):
 	
 	def inverse(self):
 		a, b, c, d, e, f = self.abcdef
+		det = a*d-b*c
 		try:
-			idet = 1./(a*d-b*c)
+			return Matrix(*(u/det for u in (d, -b, -c, a, c*f-e*d, b*e-a*f)))
 		except ZeroDivisionError:
 			return Matrix()
-		return Matrix(*(idet*u for u in (d, -b, -c, a, c*f-e*d, b*d-a*f)))
 
 
 def Ortho(left, right, bottom, top):
