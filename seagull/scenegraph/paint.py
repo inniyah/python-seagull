@@ -12,7 +12,7 @@ from ..opengl.utils import (create_shader, create_program, set_uniform,
                             OffscreenContext)
 from ._common import _Element, _Context
 
-from .transform import Translate, Scale, Matrix, ortho, product
+from .transform import Translate, Matrix, Ortho, Stretch, product
 
 
 # shaders ####################################################################
@@ -230,7 +230,7 @@ def _create(name, **default_uniforms):
 		global _current_program, _current_uniforms
 		uniforms = dict(default_uniforms)
 		uniforms.update(kwargs)
-		uniforms["projection_transform"] = ortho(*OffscreenContext.orthos[-1])
+		uniforms["projection_transform"] = Ortho(*OffscreenContext.orthos[-1])
 		uniforms["mask_transform"] = _MaskContext.transforms[-1].inverse()
 		uniforms["masking"] = [len(_MaskContext.textures) > 1]
 
@@ -274,7 +274,7 @@ def _stop(o, c, a=1.):
 
 def _object_bbox(origin, bbox):
 	(x_min, y_min), (x_max, y_max) = bbox
-	return Translate(x_min, y_min) * Scale(x_max-x_min, y_max-y_min)
+	return Stretch(x_min, y_min, x_max-x_min, y_max-y_min)
 
 def _user_space(origin, bbox):
 	x, y = origin
@@ -389,7 +389,9 @@ class _MaskContext(_Context):
 	transforms = [Matrix()]
 	
 	def __init__(self, origin, size, texture_id):
-		self.transform = Translate(*origin) * Scale(*size)
+		x, y = origin
+		width, height = size
+		self.transform = Stretch(x, y, width, height)
 		self.texture_id = texture_id
 	
 	def __del__(self):

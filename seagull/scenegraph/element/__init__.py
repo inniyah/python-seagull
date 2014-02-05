@@ -11,7 +11,7 @@ from weakref import WeakValueDictionary as _weakdict
 from ...opengl.utils import OffscreenContext
 from .._common import _Element
 from ..paint import Color, _Texture, _MaskContext
-from ..transform import Matrix, Translate, Scale, product
+from ..transform import Matrix, Translate, Stretch, product
 
 
 # element ####################################################################
@@ -146,7 +146,7 @@ class Element(_Element):
 			transform = Matrix()
 		elif units == "objectBoundingBox":
 			(x_min, y_min), (x_max, y_max) = self.aabbox()
-			transform = Translate(x_min, y_min) * Scale(x_max-x_min, y_max-y_min)
+			transform = Stretch(x_min, y_min, x_max-x_min, y_max-y_min)
 		else:
 			raise ValueError("unknown units %s" % units)
 		return product(*self.transform) * transform

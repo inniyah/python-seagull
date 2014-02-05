@@ -178,17 +178,25 @@ class Matrix(_Transform):
 		return Matrix(*(idet*u for u in (d, -b, -c, a, c*f-e*d, b*d-a*f)))
 
 
-def ortho(left, right, bottom, top):
+def Ortho(left, right, bottom, top):
 	width, height = right-left, top-bottom
 	a, c, e = 2./width, 0.,        -(left+right)/width
 	b, d, f = 0.,       2./height, -(bottom+top)/height
 	return Matrix(a, b, c, d, e, f)
 
+
+def Stretch(x, y, width, height):
+	a, c, e = width, 0.,     x
+	b, d, f = 0.,    height, y
+	return Matrix(a, b, c, d, e, f)
+
+
+# helpers ####################################################################
+
 def product(p=Matrix(), *qs):
 	for q in qs:
 		p = p * q
 	return p
-
 
 def _list_from_params(t, r, sk, s, error=1e-6):
 	(tx, ty), (cosa, sina), (hx, hy), (sx, sy) = t, r, sk, s
