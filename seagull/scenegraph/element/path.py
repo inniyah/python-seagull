@@ -114,9 +114,9 @@ def _flatten(path_data, du2=1.):
 _WIDTH_LIMIT = 1.
 _SCALE_STEP  = 1.2
 
-def _du2(transforms):
+def _du2(transform):
 	"""surface of a pixel in local coordinates."""
-	a, b, c, d, _, _ = transforms.abcdef
+	a, b, c, d, _, _ = transform.abcdef
 	return a*d-b*c
 
 
@@ -249,24 +249,24 @@ class Path(Element):
 		return strokes, offsets, opacity_correction
 	
 	
-	def _aabbox(self, transforms, inheriteds):
-		du2 = _du2(transforms)
+	def _aabbox(self, transform, inheriteds):
+		du2 = _du2(transform)
 		
 		points = []
 		if self.fill:
 			_, fills = self._fills(du2)
 			if fills:
-				points.append(transforms.project(*p) for p in fills)
+				points.append(transform.project(*p) for p in fills)
 		if self.stroke and self.stroke_width > 0.:
 			(_, strokes), _, _ = self._strokes(du2)
 			if strokes:
-				points.append(transforms.project(*p) for p in strokes)
+				points.append(transform.project(*p) for p in strokes)
 		
 		return _bbox(points)
 	
 	
-	def _render(self, transforms, inheriteds):
-		du2 = _du2(transforms)
+	def _render(self, transform, inheriteds):
+		du2 = _du2(transform)
 		origin = self.x, self.y
 		
 		fill = self._color(self.fill)
@@ -276,17 +276,17 @@ class Path(Element):
 				"nonzero": fill.paint_nonzero,
 				"evenodd": fill.paint_evenodd,
 			}[self.fill_rule]
-			paint(self.fill_opacity, fills, transforms, origin, self._bbox)
+			paint(self.fill_opacity, fills, transform, origin, self._bbox)
 		
 		stroke = self._color(self.stroke)
 		if stroke and self.stroke_width > 0.:
 			(strokes, _), (offsets, _), correction = self._strokes(du2)
 			opacity = self.stroke_opacity * correction
-			stroke.paint_one(opacity, strokes, transforms, origin, self._bbox)
+			stroke.paint_one(opacity, strokes, transform, origin, self._bbox)
 	
 	
-	def _hit_test(self, x, y, transforms):
-		du2 = _du2(transforms)
+	def _hit_test(self, x, y, transform):
+		du2 = _du2(transform)
 
 		if self.fill:
 			(x_min, y_min), (x_max, y_max) = self._bbox

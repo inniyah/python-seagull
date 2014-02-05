@@ -82,7 +82,7 @@ def motion(x1, y1):
 	feedback.children = []
 	if state == IDLE:
 		for path, point in scene.pick(x1, y1):
-			transform = product(*(elem._transform for elem in path[:-1]))
+			transform = product(*(elem.matrix() for elem in path[:-1]))
 			(x_min, y_min), (x_max, y_max) = path[-1].aabbox(transform)
 			feedback.children.append(sg.Rectangle(x=x_min, y=y_min,
 			                                      width=x_max-x_min, height=y_max-y_min))

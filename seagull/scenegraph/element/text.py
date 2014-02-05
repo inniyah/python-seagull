@@ -87,14 +87,14 @@ class Text(Element):
 			'end':    -self._width,
 		}[self.text_anchor]
 	
-	def _aabbox(self, transforms, inheriteds):
-		return self._text_bbox.aabbox(transforms * Translate(self._anchor()), inheriteds)
+	def _aabbox(self, transform, inheriteds):
+		return self._text_bbox.aabbox(transform * Translate(self._anchor()), inheriteds)
 	
-	def _render(self, transforms, inheriteds):
+	def _render(self, transform, inheriteds):
 		font_size = self.font_size
 		font_face = self.font_face
 		
-		_, (cosa, sina), _, (sx, sy) = transforms.params()
+		_, (cosa, sina), _, (sx, sy) = transform.params()
 		a, b = cosa*sx, sina*sy
 		c, d = -b, a
 		scale = hypot(a, b)
@@ -104,7 +104,7 @@ class Text(Element):
 		vector = vector or (self.stroke is not None) or (self.fill is None)
 		
 		x_anchor = self._anchor()
-		X0, Y0 = transforms.project(x_anchor)
+		X0, Y0 = transform.project(x_anchor)
 		
 		if vector:
 			X, Y = 0., 0.
@@ -150,7 +150,7 @@ class Text(Element):
 
 			X += dX
 			Y += dY
-			x, _ = transforms.unproject(X+X0, Y+Y0)
+			x, _ = transform.unproject(X+X0, Y+Y0)
 			self._ws.append(x-x_anchor)
 		
 		if all(type(c) in [type(None), Color] for c in [self.fill, self.stroke]):
@@ -158,7 +158,7 @@ class Text(Element):
 			if not vector:
 				for letter in letters.children:
 					letter.element.fill.rgb = self.fill.rgb
-			letters.render(transforms, inheriteds)
+			letters.render(transform, inheriteds)
 		
 		else:
 			# multi-pass rendering if a gradient or pattern is used
@@ -187,7 +187,7 @@ class Text(Element):
 				if filler_fill:
 					filler.fill, filler.fill_opacity = filler_fill, filler_opacity
 					mask.fill, mask.stroke = masking
-					filler.render(transforms, inheriteds)
+					filler.render(transform, inheriteds)
 	
 	
 	def index(self, x, y=0):
@@ -197,8 +197,8 @@ class Text(Element):
 		return i-1
 	
 	
-	def _hit_test(self, x, y, transforms):
-		return bool(self._text_bbox.pick(x, y, transforms*Translate(self._anchor())))
+	def _hit_test(self, x, y, transform):
+		return bool(self._text_bbox.pick(x, y, transform*Translate(self._anchor())))
 	
 	
 	def _xml_content(self, defs):

@@ -28,11 +28,11 @@ class Use(Element):
 	def href(self):
 		return self.element
 		
-	def _aabbox(self, transforms, inheriteds):
-		return self.element.aabbox(transforms, inheriteds)
+	def _aabbox(self, transform, inheriteds):
+		return self.element.aabbox(transform, inheriteds)
 	
-	def _render(self, transforms, inheriteds):
-		self.element.render(transforms, inheriteds)
+	def _render(self, transform, inheriteds):
+		self.element.render(transform, inheriteds)
 
-	def _pick_content(self, x, y, transforms):
-		return self.element.pick(x, y, transforms)
+	def _pick_content(self, x, y, transform):
+		return self.element.pick(x, y, transform)

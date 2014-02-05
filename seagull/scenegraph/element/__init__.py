@@ -120,21 +120,18 @@ class Element(_Element):
 	@property
 	def attributes(self):
 		return (name for name in _ATTRIBUTES if name in self._attributes)
-
-	# transformations
-	
-	@property
-	def _transform(self):
-		return product(*self.transform) * Translate(self.x, self.y)
 	
 	
 	# axis-aligned bounding box
 	
-	def aabbox(self, transforms=Matrix(), inheriteds=_INHERITEDS):
-		inheriteds = self._inherit(inheriteds)
-		return self._aabbox(transforms * self._transform, inheriteds)
+	def matrix(self):
+		return product(*self.transform)*Translate(self.x, self.y)
 	
-	def _aabbox(self, transforms, inheriteds):
+	def aabbox(self, transform=Matrix(), inheriteds=_INHERITEDS):
+		inheriteds = self._inherit(inheriteds)
+		return self._aabbox(transform*self.matrix(), inheriteds)
+	
+	def _aabbox(self, transform, inheriteds):
 		raise NotImplementedError
 	
 	def _units(self, elem, attr, default="userSpaceOnUse"):
@@ -156,7 +153,7 @@ class Element(_Element):
 			return self.color
 		return color
 	
-	def render(self, transforms=Matrix(), inheriteds=_INHERITEDS,
+	def render(self, transform=Matrix(), inheriteds=_INHERITEDS,
 	                 clipping=True, masking=True, opacity=True):
 		inheriteds = self._inherit(inheriteds)
 		
@@ -168,22 +165,22 @@ class Element(_Element):
 				masking = False
 				mask, units = self.mask, "maskContentUnits"
 			
-			mask_transforms = self._units(mask, units)
-			with OffscreenContext(mask.aabbox(transforms*mask_transforms),
+			mask_transform = self._units(mask, units)
+			with OffscreenContext(mask.aabbox(transform*mask_transform),
 			                      (0., 0., 0., 0.)) as ((x, y), (width, height),
 			                                            mask_texture_id):
 				if mask_texture_id:
-					mask.render(transforms*mask_transforms)
+					mask.render(transform*mask_transform)
 			
 			with _MaskContext((x, y), (width, height), mask_texture_id):
-				self.render(transforms, inheriteds,
+				self.render(transform, inheriteds,
 				            clipping=clipping, masking=masking, opacity=opacity)
 		
 		elif opacity and self.opacity < 1.:
-			with OffscreenContext(self.aabbox(transforms, inheriteds)) as \
+			with OffscreenContext(self.aabbox(transform, inheriteds)) as \
 			     ((x, y), (width, height), elem_texture_id):
 				if elem_texture_id:
-					self.render(transforms, inheriteds,
+					self.render(transform, inheriteds,
 					            clipping=clipping, masking=masking, opacity=False)
 			
 			Rectangle(x=x, y=y, width=width, height=height,
@@ -191,25 +188,26 @@ class Element(_Element):
 			          fill_opacity=self.opacity).render()
 		
 		else:
-			self._render(transforms*self._transform, inheriteds)
+			self._render(transform*self.matrix(), inheriteds)
 	
-	def _render(self, transforms, inheriteds):
+	def _render(self, transform, inheriteds):
 		raise NotImplementedError
 	
 	
 	# picking 
 	
-	def _hit_test(self, x, y, transforms):
+	def _hit_test(self, x, y, transform):
 		return False
 	
-	def pick(self, x=0, y=0, transforms=Matrix()):
-		p = x, y = self._transform.unproject(x, y)
-		transforms = transforms * self._transform
-		hits = [([self], p)] if self._hit_test(x, y, transforms) else []
-		hits += [([self] + e, p) for e, p in self._pick_content(x, y, transforms)]
+	def pick(self, x=0, y=0, transform=Matrix()):
+		matrix = self.matrix()
+		p = x, y = matrix.unproject(x, y)
+		transform = transform*matrix
+		hits = [([self], p)] if self._hit_test(x, y, transform) else []
+		hits += [([self] + e, p) for e, p in self._pick_content(x, y, transform)]
 		return hits
 		
-	def _pick_content(self, x, y, transforms):
+	def _pick_content(self, x, y, transform):
 		return []
 
 

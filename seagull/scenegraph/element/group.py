@@ -26,18 +26,18 @@ class Group(Element):
 		super(Group, self).__init__(**attributes)
 		self.children = children if children != None else []
 	
-	def _aabbox(self, transforms, inheriteds):
-		bboxes = (child.aabbox(transforms, inheriteds) for child in self.children)
+	def _aabbox(self, transform, inheriteds):
+		bboxes = (child.aabbox(transform, inheriteds) for child in self.children)
 		return _bbox(bbox for bbox in bboxes if bbox != _empty_bbox)
 	
-	def _render(self, transforms, inheriteds):
+	def _render(self, transform, inheriteds):
 		for child in self.children:
-			child.render(transforms, inheriteds)
+			child.render(transform, inheriteds)
 					
-	def _pick_content(self, x, y, transforms):
+	def _pick_content(self, x, y, transform):
 		hits = []
 		for child in self.children:
-			hits += child.pick(x, y, transforms)
+			hits += child.pick(x, y, transform)
 		return hits
 		
 	def _xml_content(self, defs):

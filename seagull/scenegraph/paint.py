@@ -308,9 +308,9 @@ def _stencil_nonzero(n):
 
 
 def _make_paint(_stencil):
-	def paint(color, alpha, data, transforms, origin, bbox):
+	def paint(color, alpha, data, transform, origin, bbox):
 		color._use_program(color=[color.rgb], alpha=[float(alpha)],
-		                   modelview_transform=transforms,
+		                   modelview_transform=transform,
 		                   paint_transform=product(*color.transform).inverse()*
 		                                   color.units(origin, bbox))
 		n, vertices = data
