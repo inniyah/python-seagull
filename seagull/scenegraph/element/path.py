@@ -256,11 +256,11 @@ class Path(Element):
 		if self.fill:
 			_, fills = self._fills(du2)
 			if fills:
-				points.append(transforms.unproject(*p) for p in fills)
+				points.append(transforms.project(*p) for p in fills)
 		if self.stroke and self.stroke_width > 0.:
 			(_, strokes), _, _ = self._strokes(du2)
 			if strokes:
-				points.append(transforms.unproject(*p) for p in strokes)
+				points.append(transforms.project(*p) for p in strokes)
 		
 		return _bbox(points)
 	

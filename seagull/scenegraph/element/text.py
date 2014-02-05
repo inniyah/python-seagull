@@ -104,7 +104,7 @@ class Text(Element):
 		vector = vector or (self.stroke is not None) or (self.fill is None)
 		
 		x_anchor = self._anchor()
-		X0, Y0 = transforms.unproject(x_anchor)
+		X0, Y0 = transforms.project(x_anchor)
 		
 		if vector:
 			X, Y = 0., 0.
@@ -150,7 +150,7 @@ class Text(Element):
 
 			X += dX
 			Y += dY
-			x, _ = transforms.project(X+X0, Y+Y0)
+			x, _ = transforms.unproject(X+X0, Y+Y0)
 			self._ws.append(x-x_anchor)
 		
 		if all(type(c) in [type(None), Color] for c in [self.fill, self.stroke]):

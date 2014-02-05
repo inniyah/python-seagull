@@ -31,10 +31,10 @@ class _Transform(_Base):
 	attributes = []
 	
 	def project(self, x=0, y=0):
-		return _project(x, y, *self.inverse().abcdef)
+		return _project(x, y, *self.abcdef)
 	
 	def unproject(self, x=0., y=0.):
-		return _project(x, y, *self.abcdef)
+		return _project(x, y, *self.inverse().abcdef)
 	
 	def __mul__(self, other):
 		return Matrix(*_mul(self.abcdef, other.abcdef))

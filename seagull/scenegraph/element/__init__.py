@@ -203,7 +203,7 @@ class Element(_Element):
 		return False
 	
 	def pick(self, x=0, y=0, transforms=Matrix()):
-		p = x, y = self._transform.project(x, y)
+		p = x, y = self._transform.unproject(x, y)
 		transforms = transforms * self._transform
 		hits = [([self], p)] if self._hit_test(x, y, transforms) else []
 		hits += [([self] + e, p) for e, p in self._pick_content(x, y, transforms)]
