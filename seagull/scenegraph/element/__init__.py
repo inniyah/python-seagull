@@ -127,9 +127,6 @@ class Element(_Element):
 	def _transform(self):
 		return product(*self.transform) * Translate(self.x, self.y)
 	
-	def project(self, x=0, y=0):
-		return self._transform.project(x, y)
-	
 	
 	# axis-aligned bounding box
 	
@@ -206,7 +203,7 @@ class Element(_Element):
 		return False
 	
 	def pick(self, x=0, y=0, transforms=Matrix()):
-		p = x, y = self.project(x, y)
+		p = x, y = self._transform.project(x, y)
 		transforms = transforms * self._transform
 		hits = [([self], p)] if self._hit_test(x, y, transforms) else []
 		hits += [([self] + e, p) for e, p in self._pick_content(x, y, transforms)]

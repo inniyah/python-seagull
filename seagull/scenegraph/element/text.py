@@ -198,8 +198,8 @@ class Text(Element):
 	
 	
 	def _hit_test(self, x, y, transforms):
-		x, y = self._text_bbox.project(x, y)
-		return self._text_bbox._hit_test(x, y, transforms)
+		return bool(self._text_bbox.pick(x, y, transforms*Translate(self._anchor())))
+	
 	
 	def _xml_content(self, defs):
 		text = self.text
