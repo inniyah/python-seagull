@@ -93,10 +93,10 @@ class Text(Element):
 	def _render(self, transforms, inheriteds):
 		font_size = self.font_size
 		font_face = self.font_face
-
-		_, (cosa, sina), (hx, hy), (sx, sy) = transforms.params()
+		
+		_, (cosa, sina), _, (sx, sy) = transforms.params()
 		a, b = cosa*sx, sina*sy
-		c, d = -b, a #TODO: handle non orthogonal transformations
+		c, d = -b, a
 		scale = hypot(a, b)
 		angle = degrees(atan2(b, a))
 		
