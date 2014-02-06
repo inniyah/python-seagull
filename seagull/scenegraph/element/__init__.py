@@ -122,10 +122,13 @@ class Element(_Element):
 		return (name for name in _ATTRIBUTES if name in self._attributes)
 	
 	
-	# axis-aligned bounding box
+	# transformations
 	
 	def matrix(self):
-		return product(*self.transform)*Translate(self.x, self.y)
+		return product(*self.transform + [Translate(self.x, self.y)])
+	
+	
+	# axis-aligned bounding box
 	
 	def aabbox(self, transform=Matrix(), inheriteds=_INHERITEDS):
 		inheriteds = self._inherit(inheriteds)
@@ -169,8 +172,9 @@ class Element(_Element):
 			with OffscreenContext(mask.aabbox(transform*mask_transform),
 			                      (0., 0., 0., 0.)) as ((x, y), (width, height),
 			                                            mask_texture_id):
-				if mask_texture_id:
-					mask.render(transform*mask_transform)
+				if not mask_texture_id:
+					return
+				mask.render(transform*mask_transform)
 			
 			with _MaskContext((x, y), (width, height), mask_texture_id):
 				self.render(transform, inheriteds,
@@ -179,9 +183,10 @@ class Element(_Element):
 		elif opacity and self.opacity < 1.:
 			with OffscreenContext(self.aabbox(transform, inheriteds)) as \
 			     ((x, y), (width, height), elem_texture_id):
-				if elem_texture_id:
-					self.render(transform, inheriteds,
-					            clipping=clipping, masking=masking, opacity=False)
+				if not elem_texture_id:
+					return
+				self.render(transform, inheriteds,
+				            clipping=clipping, masking=masking, opacity=False)
 			
 			Rectangle(x=x, y=y, width=width, height=height,
 			          fill=_Texture(elem_texture_id),
@@ -197,13 +202,11 @@ class Element(_Element):
 	# picking 
 	
 	def _hit_test(self, x, y, transform):
-		return False
+		return []
 	
 	def pick(self, x=0, y=0, transform=Matrix()):
-		matrix = self.matrix()
-		p = x, y = matrix.unproject(x, y)
-		transform = transform*matrix
-		hits = [([self], p)] if self._hit_test(x, y, transform) else []
+		transform = transform*self.matrix()
+		hits = self._hit_test(x, y, transform)
 		hits += [([self] + e, p) for e, p in self._pick_content(x, y, transform)]
 		return hits
 		

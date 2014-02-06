@@ -105,6 +105,7 @@ class Text(Element):
 		
 		x_anchor = self._anchor()
 		X0, Y0 = transform.project(x_anchor)
+		untransform = transform.inverse()
 		
 		if vector:
 			X, Y = 0., 0.
@@ -150,7 +151,7 @@ class Text(Element):
 
 			X += dX
 			Y += dY
-			x, _ = transform.unproject(X+X0, Y+Y0)
+			x, _ = untransform.project(X+X0, Y+Y0)
 			self._ws.append(x-x_anchor)
 		
 		if all(type(c) in [type(None), Color] for c in [self.fill, self.stroke]):
@@ -198,7 +199,7 @@ class Text(Element):
 	
 	
 	def _hit_test(self, x, y, transform):
-		return bool(self._text_bbox.pick(x, y, transform*Translate(self._anchor())))
+		return self._text_bbox.pick(x, y, transform*Translate(self._anchor()))
 	
 	
 	def _xml_content(self, defs):

@@ -11,19 +11,6 @@ from math import radians, cos, sin, hypot, degrees, atan2, tan
 from ._common import _Base
 
 
-# 2d linear algebra ##########################################################
-
-def _mul(p_abcdef, q_abcdef):
-	pa, pb, pc, pd, pe, pf = p_abcdef
-	qa, qb, qc, qd, qe, qf = q_abcdef
-	a, c, e = pa*qa+pc*qb, pa*qc+pc*qd, pa*qe+pc*qf+pe
-	b, d, f = pb*qa+pd*qb, pb*qc+pd*qd, pb*qe+pd*qf+pf
-	return a, b, c, d, e, f
-
-def _project(x, y, a, b, c, d, e, f):
-	return a*x+c*y+e, b*x+d*y+f
-
-
 # transforms #################################################################
 
 class _Transform(_Base):
@@ -31,13 +18,15 @@ class _Transform(_Base):
 	attributes = []
 	
 	def project(self, x=0, y=0):
-		return _project(x, y, *self.abcdef)
-	
-	def unproject(self, x=0., y=0.):
-		return _project(x, y, *self.inverse().abcdef)
+		a, b, c, d, e, f = self.abcdef
+		return a*x+c*y+e, b*x+d*y+f
 	
 	def __mul__(self, other):
-		return Matrix(*_mul(self.abcdef, other.abcdef))
+		sa, sb, sc, sd, se, sf = self.abcdef
+		oa, ob, oc, od, oe, of = other.abcdef
+		a, c, e = sa*oa+sc*ob, sa*oc+sc*od, sa*oe+sc*of+se
+		b, d, f = sb*oa+sd*ob, sb*oc+sd*od, sb*oe+sd*of+sf
+		return Matrix(a, b, c, d, e, f)
 	
 	def params(self, error=1e-6):
 		"""separate translation, rotation, shear and scale"""
@@ -172,10 +161,7 @@ class Matrix(_Transform):
 	def inverse(self):
 		a, b, c, d, e, f = self.abcdef
 		det = a*d-b*c
-		try:
-			return Matrix(*(u/det for u in (d, -b, -c, a, c*f-e*d, b*e-a*f)))
-		except ZeroDivisionError:
-			return Matrix()
+		return Matrix(*(u/det for u in (d, -b, -c, a, c*f-e*d, b*e-a*f)))
 
 
 def Ortho(left, right, bottom, top):
@@ -188,6 +174,11 @@ def Ortho(left, right, bottom, top):
 def Stretch(x, y, width, height):
 	a, c, e = width, 0.,     x
 	b, d, f = 0.,    height, y
+	return Matrix(a, b, c, d, e, f)
+
+def Shrink(x, y, width, height):
+	a, c, e = 1./width, 0.,        -x/width
+	b, d, f = 0.,       1./height, -y/height
 	return Matrix(a, b, c, d, e, f)
 
 

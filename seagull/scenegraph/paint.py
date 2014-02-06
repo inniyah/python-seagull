@@ -12,7 +12,7 @@ from ..opengl.utils import (create_shader, create_program, set_uniform,
                             OffscreenContext)
 from ._common import _Element, _Context
 
-from .transform import Translate, Matrix, Ortho, Stretch, product
+from .transform import Translate, Matrix, Ortho, Shrink, product
 
 
 # shaders ####################################################################
@@ -274,7 +274,10 @@ def _stop(o, c, a=1.):
 
 def _object_bbox(origin, bbox):
 	(x_min, y_min), (x_max, y_max) = bbox
-	return Stretch(x_min, y_min, x_max-x_min, y_max-y_min).inverse()
+	try:
+		return Shrink(x_min, y_min, x_max-x_min, y_max-y_min)
+	except ZeroDivisionError:
+		return Matrix()
 
 def _user_space(origin, bbox):
 	return Translate(*origin)
@@ -390,7 +393,7 @@ class _MaskContext(_Context):
 	def __init__(self, origin, size, texture_id):
 		x, y = origin
 		width, height = size
-		self.transform = Stretch(x, y, width, height).inverse()
+		self.transform = Shrink(x, y, width, height)
 		self.texture_id = texture_id
 	
 	def __del__(self):

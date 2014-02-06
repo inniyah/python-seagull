@@ -286,9 +286,11 @@ class Path(Element):
 	
 	
 	def _hit_test(self, x, y, transform):
+		x, y = transform.inverse().project(x, y)
 		du2 = _du2(transform)
-
-		if self.fill:
+		hit = False
+		
+		if not hit and self.fill:
 			(x_min, y_min), (x_max, y_max) = self._bbox
 			if (x_min <= x <= x_max) and (y_min <= y <= y_max):
 				_, fills = self._fills(du2)
@@ -297,13 +299,11 @@ class Path(Element):
 						"nonzero": _nonzero_hit,
 						"evenodd": _evenodd_hit,
 					}[self.fill_rule]
-					if fill_hit(x, y, fills):
-						return True
+					hit = fill_hit(x, y, fills)
 
-		if self.stroke and self.stroke_width > 0.:
+		if not hit and self.stroke and self.stroke_width > 0.:
 			(_, strokes), _, _ = self._strokes(du2)
 			if strokes:
-				if _stroke_hit(x, y, strokes):
-					return True
+				hit = _stroke_hit(x, y, strokes)
 		
-		return False
+		return [([self], (x, y))] if hit else []
