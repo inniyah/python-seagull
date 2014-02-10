@@ -38,10 +38,11 @@ SKIP_LIST = [
 	"animate-", "filters-", "fonts-", "interact-", "linking-", "script-",
 	"dom-",
 ]
-filenames = [
+filenames = list(sorted(
 	f for f in glob.glob("%s*.svg*" % prefix)
 	if not any(skip in f for skip in SKIP_LIST)
-]
+))
+
 current = 0
 
 def load(index):
