@@ -11,7 +11,8 @@ from math import exp
 
 import OpenGL
 OpenGL.ERROR_CHECKING = False
-OpenGL.ERROR_LOGGING = False
+OpenGL.CONTEXT_CHECKING = False # the doc lies: default value is True
+OpenGL.ARRAY_SIZE_CHECKING = False
 
 from OpenGL.GLUT import *
 
