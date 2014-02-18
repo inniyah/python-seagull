@@ -498,10 +498,9 @@ class Parser(object):
 				f = open(filename, "rb")
 			try:
 				parser.parse(f.read())
-			except:
-				raise
-			f.close()
-			os.chdir(cwd)
+			finally:
+				f.close()
+				os.chdir(cwd)
 		else:
 			parser = self
 		element = parser.elements.get(_id, None)
