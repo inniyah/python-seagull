@@ -180,7 +180,7 @@ def _caps_square(p0, p1, hw, du=1, start=True):
 def _caps_round(p0, p1, hw, du=1, start=True):
 	"""compute round cap of width 2*hw for [p0,p1]."""
 	aw, bw = _offset(p0, p1, hw)
-	n = int(sqrt(hw/du)) + 1 # du/hw ~ 1 - cos(da/2) ~ daˆ2/8 at first order
+	n = int(sqrt(hw*du)) + 1 # 1/(du*hw) ~ 1 - cos(da/2) ~ daˆ2/8 at first order
 	da = pi/(2*n+1)
 	if start:
 		x, y = p0

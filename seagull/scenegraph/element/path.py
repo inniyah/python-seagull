@@ -117,7 +117,7 @@ _SCALE_STEP  = 1.2
 def _du2(transform):
 	"""surface of a pixel in local coordinates."""
 	a, b, c, d, _, _ = transform.abcdef
-	return a*d-b*c
+	return abs(a*d-b*c)
 
 
 def _scale_index(du2, scale_step=_SCALE_STEP):
@@ -224,10 +224,10 @@ class Path(Element):
 			paths = self._paths(du2)
 			
 			# better thin stroke rendering
-			du = 1./sqrt(du2)
-			adapt_width = self.stroke_width / du
+			du = sqrt(du2)
+			adapt_width = self.stroke_width * du
 			if adapt_width < _WIDTH_LIMIT:
-				width = du
+				width = 1./du
 				opacity_correction = adapt_width
 			else:
 				width = self.stroke_width
