@@ -25,6 +25,9 @@ def gl_preparer(clear_color=(1., 1., 1., 0.)):
 			_gl.Enable(_gl.TEXTURE_2D)
 		else:
 			_gl.BindVertexArray(_gl.GenVertexArrays(1))
+		if bool(_gl.MinSampleShading):
+			_gl.Enable(_gl.SAMPLE_SHADING)
+			_gl.MinSampleShading(1.)
 	return prepare
 
 gl_prepare = gl_preparer()
