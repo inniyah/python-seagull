@@ -110,7 +110,7 @@ class Element(_Element):
 	
 	def _inherit(self, inheriteds):
 		self._inheriteds = inheriteds
-		return dict((attr, getattr(self, attr)) for attr in _INHERITEDS)
+		return {attr: getattr(self, attr) for attr in _INHERITEDS}
 	
 	@property
 	def id(self):

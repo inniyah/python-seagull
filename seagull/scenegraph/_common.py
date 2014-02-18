@@ -31,11 +31,11 @@ class _Base(object):
 	
 	_state_attributes = []
 	def _state(self):
-		return dict((name, getattr(self, name))
-		            for name in self._state_attributes)
+		return {name: getattr(self, name)
+		        for name in self._state_attributes}
 	def __eq__(self, other):
 		try:
-			return self._state() == other._state()
+			return other._state() == self._state()
 		except AttributeError:
 			return False
 	def __ne__(self, other): return not self.__eq__(other)
