@@ -30,7 +30,7 @@ class Image(Rectangle):
 	def __init__(self, href, width=None, height=None, **attributes):
 		href = abspath(href)
 		pil_image = _Image.open(href)
-		if pil_image.mode not in ["RGB", "RGBA", "L", "LA"]:
+		if pil_image.mode not in ["RGB", "RGBA"]:
 			pil_image = pil_image.convert("RGBA")
 		iw, ih = pil_image.size
 		if width is None:  width = iw

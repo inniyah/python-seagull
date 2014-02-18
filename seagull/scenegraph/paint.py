@@ -22,7 +22,9 @@ _ATTRIB_LOCATIONS = {
 }
 
 _VERT_SHADER = """
-	attribute vec2 vertex;
+	#version %(GLSL_VERSION)s
+	
+	%(attribute)s vec2 vertex;
 	
 	uniform vec3 color;
 	uniform float alpha;
@@ -33,9 +35,9 @@ _VERT_SHADER = """
 	uniform mat3 paint_transform;
 	uniform mat3 mask_transform;
 	
-	varying vec4 front_color;
-	varying vec2 paint_coord;
-	varying vec2 mask_coord;
+	%(varying)s vec4 front_color;
+	%(varying)s vec2 paint_coord;
+	%(varying)s vec2 mask_coord;
 	
 	void main() {
 		front_color = vec4(color, alpha);
@@ -47,29 +49,40 @@ _VERT_SHADER = """
 """
 
 _MAIN_FRAG_SHADER = """
+	#version %(GLSL_VERSION)s
+	
 	uniform bool masking;
 	uniform sampler2D mask;
 	
 	const vec4 luminance = vec4(.2125, .7154, .0721, 0.);
 	
-	varying vec4 front_color;
-	varying vec2 mask_coord;
+	%(varying)s vec4 front_color;
+	%(varying)s vec2 mask_coord;
 	
 	vec4 color(); // filling color
 	
-	void main() {
+	vec4 frag_color() {
 		vec4 color = color();
 		if(masking) {
-			color.a *= dot(luminance, texture2D(mask, mask_coord));
+			color.a *= dot(luminance, %(texture2D)s(mask, mask_coord));
 		}
-		gl_FragColor = front_color * color;
+		return front_color * color;
 	}
+	
+	#if __VERSION__ >= 150
+	out vec4 frag_color;
+	void main() { frag_color = frag_color(); }
+	#else
+	void main() { gl_FragColor = frag_color(); }
+	#endif
 """
 
 
 # filling fragment shaders ###################################################
 
 _SOLID_FRAG_SHADER = """
+	#version %(GLSL_VERSION)s
+	
 	vec4 color() {
 		return vec4(1., 1., 1., 1.);
 	}
@@ -77,12 +90,14 @@ _SOLID_FRAG_SHADER = """
 """
 
 _TEXTURE_FRAG_SHADER = """
+	#version %(GLSL_VERSION)s
+	
 	uniform sampler2D texture;
 	
-	varying vec2 paint_coord;
+	%(varying)s vec2 paint_coord;
 	
 	vec4 color() {
-		return texture2D(texture, paint_coord);
+		return %(texture2D)s(texture, paint_coord);
 	}
 
 """
@@ -90,6 +105,8 @@ _TEXTURE_FRAG_SHADER = """
 MAX_STOPS = 21
 
 _GRADIENT_FRAG_SHADER = """
+	#version %(GLSL_VERSION)s
+	
 	const int N = %(MAX_STOPS)s;
 	
 	uniform int n;
@@ -97,11 +114,11 @@ _GRADIENT_FRAG_SHADER = """
 	uniform vec4 colors[N];
 	uniform int spread;
 	
-	varying vec2 paint_coord;
+	%(varying)s vec2 paint_coord;
 	
 	float o(vec2 p); // offset at point p in the gradient
 	
-	float spread(float o) {
+	float s(float o) {
 		// offset according to spread method
 		float pad = o;
 		float repeat = fract(o);
@@ -126,12 +143,14 @@ _GRADIENT_FRAG_SHADER = """
 	
 	vec4 color() {
 		float o = o(paint_coord);
-		float s = spread(o);
+		float s = s(o);
 		return gradient(s);
 	}
-""" % {"MAX_STOPS": MAX_STOPS}
+"""
 
 _LINEAR_OFFSET_FRAG_SHADER = """
+	#version %(GLSL_VERSION)s
+	
 	uniform vec2 p1;
 	uniform vec2 p2;
 
@@ -144,6 +163,8 @@ _LINEAR_OFFSET_FRAG_SHADER = """
 """
 
 _RADIAL_OFFSET_FRAG_SHADER = """
+	#version %(GLSL_VERSION)s
+	
 	uniform vec2 c;
 	uniform float r;
 	uniform vec2 f;
@@ -164,10 +185,12 @@ _RADIAL_OFFSET_FRAG_SHADER = """
 """
 
 _PATTERN_FRAG_SHADER = """
+	#version %(GLSL_VERSION)s
+	
 	uniform vec2 origin;
 	uniform vec2 period;
 	
-	varying vec2 paint_coord;
+	%(varying)s vec2 paint_coord;
 	
 	vec4 color() {
 		vec2 uv = mod(paint_coord + origin, period);
@@ -217,7 +240,7 @@ def _program(name):
 	try:
 		program = _programs[name]
 	except KeyError:
-		shaders = (create_shader(*shader) for shader in _shaders[name])
+		shaders = list(create_shader(*shader, MAX_STOPS=MAX_STOPS) for shader in _shaders[name])
 		program = _programs[name] = create_program(*shaders, attrib_locations=_ATTRIB_LOCATIONS)
 	return program
 
@@ -317,8 +340,9 @@ def _make_paint(_stencil):
 		                   paint_transform=product(*color.transform).inverse()*
 		                                   color.units(origin, bbox))
 		n, vertices = data
+		_gl.BufferData(_gl.ARRAY_BUFFER, vertices, _gl.STATIC_DRAW)
 		_gl.VertexAttribPointer(_ATTRIB_LOCATIONS[b"vertex"], 2, _gl.FLOAT,
-		                        False, 0, vertices)
+		                        False, 0, None)
 		
 		for mask, func, stencil in [(_gl.FALSE, _gl.ALWAYS,   _stencil),
 		                            (_gl.TRUE,  _gl.NOTEQUAL, _stencil_replace)]:

@@ -19,7 +19,12 @@ def gl_preparer(clear_color=(1., 1., 1., 0.)):
 		_gl.BlendFunc(_gl.SRC_ALPHA, _gl.ONE_MINUS_SRC_ALPHA)
 		_gl.ClearColor(*clear_color)
 		_gl.Enable(_gl.STENCIL_TEST)
-		_gl.Enable(_gl.TEXTURE_2D)
+		_gl.BindBuffer(_gl.ARRAY_BUFFER, _gl.GenBuffers(1))
+		version = get_opengl_version()
+		if version < (3, 2):
+			_gl.Enable(_gl.TEXTURE_2D)
+		else:
+			_gl.BindVertexArray(_gl.GenVertexArrays(1))
 	return prepare
 
 gl_prepare = gl_preparer()
@@ -51,8 +56,6 @@ def create_texture(width, height, data=None, format=_gl.RGBA, max_level=0,
 		format = {
 			"RGB":  _gl.RGB,
 			"RGBA": _gl.RGBA,
-			"LA":   _gl.LUMINANCE_ALPHA,
-			"L":    _gl.ALPHA,
 		}[format]
 	
 	_gl.PixelStorei(_gl.UNPACK_ALIGNMENT, 1)
@@ -179,10 +182,37 @@ class OffscreenContext:
 
 # shaders ####################################################################
 
-def create_shader(shader_type, source):
+def get_opengl_version():
+	"""return opengl version."""
+	version = _gl.GetString(_gl.VERSION).decode()
+	version = version.split()[0]
+	version = map(int, version.split("."))
+	return tuple(version)
+
+def create_shader(shader_type, source, **kwargs):
 	"""compile a shader."""
+	version = get_opengl_version()
+	if version < (2, 1):
+		raise RuntimeError("unsupported OpenGL version %s", version)
+	
+	if version < (3, 2):
+		defines = {
+			"GLSL_VERSION": "120",
+			"attribute": "attribute",
+			"varying":   "varying",
+			"texture2D": "texture2D",
+		}
+	else:
+		defines = {
+			"GLSL_VERSION": "150",
+			"attribute": "in",
+			"varying":   "out" if shader_type == _gl.VERTEX_SHADER else "in",
+			"texture2D": "texture",
+		}
+	defines.update(kwargs)
+	
 	shader = _gl.CreateShader(shader_type)
-	_gl.ShaderSource(shader, source)
+	_gl.ShaderSource(shader, source % defines)
 	_gl.CompileShader(shader)
 	if _gl.GetShaderiv(shader, _gl.COMPILE_STATUS) != _gl.TRUE:
 		raise RuntimeError(_gl.GetShaderInfoLog(shader))
