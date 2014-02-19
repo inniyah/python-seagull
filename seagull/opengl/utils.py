@@ -20,13 +20,13 @@ def gl_preparer(clear_color=(1., 1., 1., 0.)):
 		_gl.ClearColor(*clear_color)
 		_gl.Enable(_gl.STENCIL_TEST)
 		_gl.BindBuffer(_gl.ARRAY_BUFFER, _gl.GenBuffers(1))
+		
 		version = get_opengl_version()
 		if version < (3, 2):
 			_gl.Enable(_gl.TEXTURE_2D)
-		else:
+		if version >= (3, 2):
 			_gl.BindVertexArray(_gl.GenVertexArrays(1))
-		if bool(_gl.MinSampleShading):
-			_gl.Enable(_gl.SAMPLE_SHADING)
+		if version >= (4, 0):
 			_gl.MinSampleShading(1.)
 	return prepare
 

@@ -8,7 +8,8 @@ paint servers
 # imports ####################################################################
 
 from ..opengl import gl as _gl
-from ..opengl.utils import (create_shader, create_program, set_uniform,
+from ..opengl.utils import (get_opengl_version,
+                            create_shader, create_program, set_uniform,
                             OffscreenContext)
 from ._common import _Element, _Context
 
@@ -248,30 +249,46 @@ def _program(name):
 _current_kwargs = {}
 _current_program = None
 
-def _create(name, **default_uniforms):
+def _create(name, enable_sample_shading=True, **default_uniforms):
+	def set_sample_shading():
+		"""en/dis-able the sample shading
+		
+		this function specializes itself on first call to avoid checking opengl
+		version at each use.
+		"""
+		nonlocal set_sample_shading
+		if get_opengl_version() >= (4, 0):
+			if enable_sample_shading:
+				set_sample_shading = lambda: _gl.Enable(_gl.SAMPLE_SHADING)
+			else:
+				set_sample_shading = lambda: _gl.Disable(_gl.SAMPLE_SHADING)
+		else:
+			set_sample_shading = lambda: None
+		set_sample_shading()
+
 	def _use(**kwargs):
 		global _current_program, _current_uniforms
-		uniforms = dict(default_uniforms)
-		uniforms.update(kwargs)
-		uniforms["projection_transform"] = Ortho(*OffscreenContext.orthos[-1])
-		uniforms["mask_transform"] = _MaskContext.transforms[-1]
-		uniforms["masking"] = [len(_MaskContext.textures) > 1]
-
 		program = _program(name)
 		if _current_program != program:
 			_gl.UseProgram(program)
 			_current_program = program
 			_current_uniforms = {}
-		
+		uniforms = dict(default_uniforms)
+		uniforms.update(kwargs)
+		uniforms["projection_transform"] = Ortho(*OffscreenContext.orthos[-1])
+		uniforms["mask_transform"] = _MaskContext.transforms[-1]
+		uniforms["masking"] = [len(_MaskContext.textures) > 1]
 		for k in uniforms:
 			v = uniforms[k]
 			if v != _current_uniforms.get(k, None):
 				set_uniform(program, k, v)
 		_current_uniforms = uniforms
+		set_sample_shading()
 	return _use
 
 _use_solid_color     = _create("solid_color", mask=[1])
-_use_texture         = _create("texture", texture=[0], mask=[1])
+_use_texture         = _create("texture", texture=[0], mask=[1],
+                               enable_sample_shading=False)
 _use_linear_gradient = _create("linear_gradient", mask=[1])
 _use_radial_gradient = _create("radial_gradient", mask=[1])
 _use_pattern         = _create("pattern", mask=[1])
