@@ -356,8 +356,8 @@ def _make_paint(_stencil):
 		                   modelview_transform=transform,
 		                   paint_transform=product(*color.transform).inverse()*
 		                                   color.units(origin, bbox))
-		n, vertices = data
-		_gl.BufferData(_gl.ARRAY_BUFFER, vertices, _gl.STATIC_DRAW)
+		n, vbo_id = data
+		_gl.BindBuffer(_gl.ARRAY_BUFFER, vbo_id)
 		_gl.VertexAttribPointer(_ATTRIB_LOCATIONS[b"vertex"], 2, _gl.FLOAT,
 		                        False, 0, None)
 		

@@ -7,11 +7,11 @@ scenegraph.element.path
 
 # imports ####################################################################
 
-from struct import pack
 from collections import defaultdict
 from copy import deepcopy
 from math import log, floor, sqrt
 
+from ...opengl.utils import create_vbo
 from . import Element
 from ._path import (_cubic, _quadric, _arc, _stroke,
                     _evenodd_hit, _nonzero_hit, _stroke_hit, _bbox)
@@ -130,16 +130,6 @@ def _scale_index(du2, scale_step=_SCALE_STEP):
 		return None
 
 
-def _c_array(points):
-	"""turn list of 2-tuple into c array of floats."""
-	n = len(points)
-	try:
-		s = len(points[0])
-	except:
-		return n, pack("%df" % n, *points)
-	return n, pack("%df" % (s*n), *(u for point in points for u in point))
-
-
 def _strip_range(stop):
 	"""sort verticies in triangle strip order, i.e. 0 -1 1 -2 2 ..."""
 	i = 0
@@ -171,17 +161,14 @@ def _cache(*attributes):
 	the cache is cleared if the state characterized by attributes has changed
 	"""
 	def decorator(method):
-		caches = defaultdict(dict)
-		states = defaultdict(tuple)
 		def decorated(path, du2=1.):
-			path_id = id(path) # could be path but _Base.hash should be fixed for that to work
 			state = tuple(getattr(path, attr) for attr in attributes)
-			if state != states[path_id]:
-				caches[path_id] = cache = {}
-				states[path_id] = deepcopy(state)
+			if state != path._states.get(method, None):
+				path._caches[method] = cache = {}
+				path._states[method] = deepcopy(state)
 				path._bbox_du2 = 0.
 			else:
-				cache = caches[path_id]
+				cache = path._caches[method]
 			scale_index = _scale_index(du2)
 			try:
 				result = cache[scale_index]
@@ -203,6 +190,11 @@ class Path(Element):
 	
 	_bbox = (0., 0.), (0., 0.)
 	_bbox_du2 = 0.
+
+	def __init__(self, **attributes):
+		super(Path, self).__init__(**attributes)
+		self._caches = {}
+		self._states = {}
 	
 	
 	@_cache("d")
@@ -216,9 +208,14 @@ class Path(Element):
 	@_cache("d")
 	def _fills(self, du2=1.):
 		paths = self._paths(du2)
-		fills = _join_strips([path[i] for i in _strip_range(len(path))]
-		                     for path, _, _ in paths)
-		return _c_array(fills), fills
+		return _join_strips([path[i] for i in _strip_range(len(path))]
+		                    for path, _, _ in paths)
+	
+	@_cache("d")
+	def _fills_data(self, du2):
+		fills = self._fills(du2)
+		return create_vbo(fills)
+	
 	
 	@_cache(
 		"d",
@@ -246,10 +243,16 @@ class Path(Element):
 			               self.stroke_miterlimit)
 			strokes.append(s)
 			offsets.append(o)
-		strokes, offsets = _join_strips(strokes), _join_strips(offsets)
-		strokes = _c_array(strokes), strokes
-		offsets = _c_array(offsets), offsets
-		return strokes, offsets, opacity_correction
+		return _join_strips(strokes), _join_strips(offsets), opacity_correction
+	
+	@_cache(
+		"d",
+		"stroke_width", "stroke_miterlimit",
+		"stroke_linecap", "stroke_linejoin",
+	)
+	def _strokes_data(self, du2):
+		strokes, offsets, opacity_correction = self._strokes(du2)
+		return create_vbo(strokes), create_vbo(offsets), opacity_correction
 	
 	
 	def _aabbox(self, transform, inheriteds):
@@ -257,11 +260,11 @@ class Path(Element):
 		
 		points = []
 		if self.fill:
-			_, fills = self._fills(du2)
+			fills = self._fills(du2)
 			if fills:
 				points.append(transform.project(*p) for p in fills)
 		if self.stroke and self.stroke_width > 0.:
-			(_, strokes), _, _ = self._strokes(du2)
+			strokes, _, _ = self._strokes(du2)
 			if strokes:
 				points.append(transform.project(*p) for p in strokes)
 		
@@ -274,7 +277,7 @@ class Path(Element):
 		
 		fill = self._color(self.fill)
 		if fill:
-			fills, _ = self._fills(du2)
+			fills = self._fills_data(du2)
 			paint = {
 				"nonzero": fill.paint_nonzero,
 				"evenodd": fill.paint_evenodd,
@@ -283,7 +286,7 @@ class Path(Element):
 		
 		stroke = self._color(self.stroke)
 		if stroke and self.stroke_width > 0.:
-			(strokes, _), (offsets, _), correction = self._strokes(du2)
+			strokes, offsets, correction = self._strokes_data(du2)
 			opacity = self.stroke_opacity * correction
 			stroke.paint_one(opacity, strokes, transform, origin, self._bbox)
 	
@@ -296,7 +299,7 @@ class Path(Element):
 		if not hit and self.fill:
 			(x_min, y_min), (x_max, y_max) = self._bbox
 			if (x_min <= x <= x_max) and (y_min <= y <= y_max):
-				_, fills = self._fills(du2)
+				fills = self._fills(du2)
 				if fills:
 					fill_hit = {
 						"nonzero": _nonzero_hit,
@@ -305,7 +308,7 @@ class Path(Element):
 					hit = fill_hit(x, y, fills)
 
 		if not hit and self.stroke and self.stroke_width > 0.:
-			(_, strokes), _, _ = self._strokes(du2)
+			strokes, _, _ = self._strokes(du2)
 			if strokes:
 				hit = _stroke_hit(x, y, strokes)
 		

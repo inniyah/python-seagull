@@ -6,6 +6,7 @@ OpenGL utilities
 
 # imports ####################################################################
 
+from struct import pack
 from math import floor, ceil
 
 from . import gl as _gl
@@ -19,7 +20,6 @@ def gl_preparer(clear_color=(1., 1., 1., 0.)):
 		_gl.BlendFunc(_gl.SRC_ALPHA, _gl.ONE_MINUS_SRC_ALPHA)
 		_gl.ClearColor(*clear_color)
 		_gl.Enable(_gl.STENCIL_TEST)
-		_gl.BindBuffer(_gl.ARRAY_BUFFER, _gl.GenBuffers(1))
 		
 		version = get_opengl_version()
 		if version < (3, 2):
@@ -181,6 +181,30 @@ class OffscreenContext:
 
 		x_min, x_max, y_max, y_min = self.orthos[-1]
 		_gl.Viewport(0, 0, x_max-x_min, y_max-y_min)
+
+
+# vertex buffer objects ######################################################
+
+def _c_array(points):
+	"""turn list of 2-tuple into c array of floats."""
+	n = len(points)
+	try:
+		s = len(points[0])
+	except:
+		return n, pack("%df" % n, *points)
+	return n, pack("%df" % (s*n), *(u for point in points for u in point))
+
+class _vbo(int):
+	"""auto releasing vbo id"""
+	def __del__(self):
+		_gl.DeleteBuffers(1, [self])
+
+def create_vbo(points):
+	n, vertices = _c_array(points)
+	vbo_id = _vbo(_gl.GenBuffers(1))
+	_gl.BindBuffer(_gl.ARRAY_BUFFER, vbo_id)
+	_gl.BufferData(_gl.ARRAY_BUFFER, vertices, _gl.STATIC_DRAW)
+	return n, vbo_id
 
 
 # shaders ####################################################################
