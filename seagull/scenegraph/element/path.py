@@ -8,6 +8,8 @@ scenegraph.element.path
 # imports ####################################################################
 
 from struct import pack
+from collections import defaultdict
+from copy import deepcopy
 from math import log, floor, sqrt
 
 from . import Element
@@ -55,7 +57,7 @@ def _flatten(path_data, du2=1.):
 			joins = []
 			
 			pn, p0 = p0, p1
-
+		
 		elif c in "LHV":
 			if c == 'L':
 				p1 = next_p()
@@ -160,6 +162,36 @@ def _join_strips(strips):
 	return strip
 
 
+# cache ######################################################################
+
+def _cache(*attributes):
+	"""caching decorator
+	
+	cache is a dict maintained by path element mapping scale index to data
+	the cache is cleared if the state characterized by attributes has changed
+	"""
+	def decorator(method):
+		caches = defaultdict(dict)
+		states = defaultdict(tuple)
+		def decorated(path, du2=1.):
+			path_id = id(path) # could be path but _Base.hash should be fixed for that to work
+			scale_index = _scale_index(du2)
+			state = tuple(deepcopy(getattr(path, attr)) for attr in attributes)
+			if state != states[path_id]:
+				caches[path_id] = cache = {}
+				states[path_id] = state
+				path._bbox_du2 = 0.
+			else:
+				cache = caches[path_id]
+			try:
+				result = cache[scale_index]
+			except KeyError:
+				cache[scale_index] = result = method(path, du2)
+			return result
+		return decorated
+	return decorator
+
+
 # path #######################################################################
 
 class Path(Element):
@@ -170,84 +202,54 @@ class Path(Element):
 	]
 	
 	_bbox = (0., 0.), (0., 0.)
-	
-	_path_state   = None
-	_fill_state   = None
-	_stroke_state = None
+	_bbox_du2 = 0.
 	
 	
+	@_cache("d")
 	def _paths(self, du2=1.):
-		path_state = list(self.d)
-		if path_state != self._path_state:
-			self._paths_cache = dict()
-			self._path_state = path_state
-
-		scale_index = _scale_index(du2)
-		try:
-			paths = self._paths_cache[scale_index]
-		except KeyError:
-			paths = _flatten(self.d, du2)
-			self._paths_cache[scale_index] = paths
-			if scale_index == max(self._paths_cache):
-				self._bbox = _bbox(path for (path, _, _) in paths)
+		paths = _flatten(self.d, du2)
+		if du2 > self._bbox_du2:
+			self._bbox_du2 = du2
+			self._bbox = _bbox(path for (path, _, _) in paths)
 		return paths
-		
+	
+	@_cache("d")
 	def _fills(self, du2=1.):
-		fill_state = list(self.d)
-		if fill_state != self._fill_state:
-			self._fills_cache = dict()
-			self._fill_state = fill_state
-		
-		scale_index = _scale_index(du2)
-		try:
-			fills = self._fills_cache[scale_index]
-		except KeyError:
-			paths = self._paths(du2)
-			fills = _join_strips([path[i] for i in _strip_range(len(path))]
-			                     for path, _, _ in paths)
-			fills = _c_array(fills), fills
-			self._fills_cache[scale_index] = fills
-		return fills
+		paths = self._paths(du2)
+		fills = _join_strips([path[i] for i in _strip_range(len(path))]
+		                     for path, _, _ in paths)
+		return _c_array(fills), fills
 	
+	@_cache(
+		"d",
+		"stroke_width", "stroke_linecap", "stroke_linejoin",
+		"stroke_miterlimit", "stroke_dasharray", "stroke_dashoffset"
+	)
 	def _strokes(self, du2=1.):
-		stroke_state = (list(self.d), self.stroke_width, self.stroke_linecap,
-		                              self.stroke_linejoin, self.stroke_miterlimit,
-		                              self.stroke_dasharray, self.stroke_dashoffset)
-		if stroke_state != self._stroke_state:
-			self._stroke_cache = dict()
-			self._stroke_state = stroke_state
+		paths = self._paths(du2)
 		
-		scale_index = _scale_index(du2)
-		try:
-			strokes, offsets, opacity_correction = self._stroke_cache[scale_index]
-		except KeyError:
-			paths = self._paths(du2)
-			
-			# better thin stroke rendering
-			du = sqrt(du2)
-			adapt_width = self.stroke_width * du
-			if adapt_width < _WIDTH_LIMIT:
-				width = 1./du
-				opacity_correction = adapt_width
-			else:
-				width = self.stroke_width
-				opacity_correction = 1.
-			
-			# strokes
-			strokes, offsets = [], []
-			for path, closed, joins in paths:
-				s, o = _stroke(path, closed, joins, width, du,
-				               self.stroke_linecap, self.stroke_linejoin,
-				               self.stroke_miterlimit)
-				strokes.append(s)
-				offsets.append(o)
-			strokes, offsets = _join_strips(strokes), _join_strips(offsets)
-			strokes = _c_array(strokes), strokes
-			offsets = _c_array(offsets), offsets
-			self._stroke_cache[scale_index] = strokes, offsets, opacity_correction
+		# better thin stroke rendering
+		du = sqrt(du2)
+		adapt_width = self.stroke_width * du
+		if adapt_width < _WIDTH_LIMIT:
+			width = 1./du
+			opacity_correction = adapt_width
+		else:
+			width = self.stroke_width
+			opacity_correction = 1.
 		
+		# strokes
+		strokes, offsets = [], []
+		for path, closed, joins in paths:
+			s, o = _stroke(path, closed, joins, width, du,
+			               self.stroke_linecap, self.stroke_linejoin,
+			               self.stroke_miterlimit)
+			strokes.append(s)
+			offsets.append(o)
+		strokes, offsets = _join_strips(strokes), _join_strips(offsets)
+		strokes = _c_array(strokes), strokes
+		offsets = _c_array(offsets), offsets
 		return strokes, offsets, opacity_correction
-	
 	
 	def _aabbox(self, transform, inheriteds):
 		du2 = _du2(transform)
