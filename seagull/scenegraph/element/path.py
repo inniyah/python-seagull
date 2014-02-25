@@ -175,14 +175,14 @@ def _cache(*attributes):
 		states = defaultdict(tuple)
 		def decorated(path, du2=1.):
 			path_id = id(path) # could be path but _Base.hash should be fixed for that to work
-			scale_index = _scale_index(du2)
-			state = tuple(deepcopy(getattr(path, attr)) for attr in attributes)
+			state = tuple(getattr(path, attr) for attr in attributes)
 			if state != states[path_id]:
 				caches[path_id] = cache = {}
-				states[path_id] = state
+				states[path_id] = deepcopy(state)
 				path._bbox_du2 = 0.
 			else:
 				cache = caches[path_id]
+			scale_index = _scale_index(du2)
 			try:
 				result = cache[scale_index]
 			except KeyError:
@@ -222,8 +222,8 @@ class Path(Element):
 	
 	@_cache(
 		"d",
-		"stroke_width", "stroke_linecap", "stroke_linejoin",
-		"stroke_miterlimit", "stroke_dasharray", "stroke_dashoffset"
+		"stroke_width", "stroke_miterlimit",
+		"stroke_linecap", "stroke_linejoin",
 	)
 	def _strokes(self, du2=1.):
 		paths = self._paths(du2)
@@ -250,6 +250,7 @@ class Path(Element):
 		strokes = _c_array(strokes), strokes
 		offsets = _c_array(offsets), offsets
 		return strokes, offsets, opacity_correction
+	
 	
 	def _aabbox(self, transform, inheriteds):
 		du2 = _du2(transform)
