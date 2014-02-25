@@ -197,7 +197,7 @@ def _c_array(points):
 class _vbo(int):
 	"""auto releasing vbo id"""
 	def __del__(self):
-		_gl.DeleteBuffers(1, [self])
+		_gl.DeleteBuffers(1, (_gl.uint*1)(self))
 
 def create_vbo(points):
 	n, vertices = _c_array(points)
@@ -288,7 +288,7 @@ _Uniforms = {
 def set_uniform(program, uniform, values):
 	if uniform.endswith("transform"):
 		_gl.UniformMatrix3fv(location(program, uniform), 1, _gl.FALSE,
-		                     values.column_major())
+		                     (_gl.float*9)(*values.column_major()))
 	else:
 		v0, n = values[0], len(values)
 		if isinstance(v0, tuple):

@@ -154,7 +154,17 @@ def _join_strips(strips):
 
 # cache ######################################################################
 
-def _cache(*attributes):
+def _fill_state(path):
+	return path.d
+
+def _stroke_state(path):
+	return (
+		path.d,
+		path.stroke_width, path.stroke_miterlimit,
+		path.stroke_linecap, path.stroke_linejoin,
+	)
+
+def _cache(_state):
 	"""caching decorator
 	
 	cache is a dict maintained by path element mapping scale index to data
@@ -162,7 +172,7 @@ def _cache(*attributes):
 	"""
 	def decorator(method):
 		def decorated(path, du2=1.):
-			state = tuple(getattr(path, attr) for attr in attributes)
+			state = _state(path)
 			if state != path._states.get(method, None):
 				path._caches[method] = cache = {}
 				path._states[method] = deepcopy(state)
@@ -197,7 +207,7 @@ class Path(Element):
 		self._states = {}
 	
 	
-	@_cache("d")
+	@_cache(_fill_state)
 	def _paths(self, du2=1.):
 		paths = _flatten(self.d, du2)
 		if du2 > self._bbox_du2:
@@ -205,23 +215,19 @@ class Path(Element):
 			self._bbox = _bbox(path for (path, _, _) in paths)
 		return paths
 	
-	@_cache("d")
+	@_cache(_fill_state)
 	def _fills(self, du2=1.):
 		paths = self._paths(du2)
 		return _join_strips([path[i] for i in _strip_range(len(path))]
 		                    for path, _, _ in paths)
 	
-	@_cache("d")
+	@_cache(_fill_state)
 	def _fills_data(self, du2):
 		fills = self._fills(du2)
 		return create_vbo(fills)
 	
 	
-	@_cache(
-		"d",
-		"stroke_width", "stroke_miterlimit",
-		"stroke_linecap", "stroke_linejoin",
-	)
+	@_cache(_stroke_state)
 	def _strokes(self, du2=1.):
 		paths = self._paths(du2)
 		
@@ -245,11 +251,7 @@ class Path(Element):
 			offsets.append(o)
 		return _join_strips(strokes), _join_strips(offsets), opacity_correction
 	
-	@_cache(
-		"d",
-		"stroke_width", "stroke_miterlimit",
-		"stroke_linecap", "stroke_linejoin",
-	)
+	@_cache(_stroke_state)
 	def _strokes_data(self, du2):
 		strokes, offsets, opacity_correction = self._strokes(du2)
 		return create_vbo(strokes), create_vbo(offsets), opacity_correction
