@@ -51,6 +51,10 @@ gl_display = gl_displayer()
 
 # textures ###################################################################
 
+class _texture_id(int):
+	def __del__(self):
+		_gl.DeleteTextures((_gl.uint*1)(self))
+
 def create_texture(width, height, data=None, format=_gl.RGBA, max_level=0,
                    min_filter=_gl.LINEAR_MIPMAP_LINEAR,
                    mag_filter=_gl.LINEAR,
@@ -63,7 +67,7 @@ def create_texture(width, height, data=None, format=_gl.RGBA, max_level=0,
 	
 	_gl.PixelStorei(_gl.UNPACK_ALIGNMENT, 1)
 
-	texture_id = _gl.GenTextures(1)
+	texture_id = _texture_id(_gl.GenTextures(1))
 	_gl.BindTexture(_gl.TEXTURE_2D, texture_id)
 	
 	_gl.TexParameteri(_gl.TEXTURE_2D, _gl.TEXTURE_BASE_LEVEL, 0)
@@ -138,7 +142,7 @@ class OffscreenContext:
 		self.fbos.append((fb_ms, rb_color, rb_depth_stencil))
 		self.orthos.append((x_min, x_max, y_max, y_min))
 		
-		self.texture_color = _gl.GenTextures(1)
+		self.texture_color = _texture_id(_gl.GenTextures(1))
 		return (x_min, y_min), (width, height), self.texture_color
 		
 	def __exit__(self, *args):
@@ -194,14 +198,14 @@ def _c_array(points):
 		return n, pack("%df" % n, *points)
 	return n, pack("%df" % (s*n), *(u for point in points for u in point))
 
-class _vbo(int):
+class _vbo_id(int):
 	"""auto releasing vbo id"""
 	def __del__(self):
 		_gl.DeleteBuffers(1, (_gl.uint*1)(self))
 
 def create_vbo(points):
 	n, vertices = _c_array(points)
-	vbo_id = _vbo(_gl.GenBuffers(1))
+	vbo_id = _vbo_id(_gl.GenBuffers(1))
 	_gl.BindBuffer(_gl.ARRAY_BUFFER, vbo_id)
 	_gl.BufferData(_gl.ARRAY_BUFFER, vertices, _gl.STATIC_DRAW)
 	return n, vbo_id
@@ -282,19 +286,17 @@ _Uniforms = {
 	(2, _gl.float): _gl.Uniform2fv,
 	(3, _gl.float): _gl.Uniform3fv,
 	(4, _gl.float): _gl.Uniform4fv,
+	(9, _gl.float): lambda location, n, values: \
+	                	_gl.UniformMatrix3fv(location, n, _gl.FALSE, values),
 	(1, _gl.int):   _gl.Uniform1iv,
 }
 
 def set_uniform(program, uniform, values):
-	if uniform.endswith("transform"):
-		_gl.UniformMatrix3fv(location(program, uniform), 1, _gl.FALSE,
-		                     (_gl.float*9)(*values.column_major()))
+	v0, n = values[0], len(values)
+	if isinstance(v0, tuple):
+		l, t = len(v0), _c_types[type(v0[0])]
+		values = (t * (l*n))(*(u for value in values for u in value))
 	else:
-		v0, n = values[0], len(values)
-		if isinstance(v0, tuple):
-			l, t = len(v0), _c_types[type(v0[0])]
-			values = (t * (l*n))(*(u for value in values for u in value))
-		else:
-			l, t = 1, _c_types[type(v0)]
-			values = (t * n)(*values)
-		_Uniforms[l, t](location(program, uniform), n, values)
+		l, t = 1, _c_types[type(v0)]
+		values = (t * n)(*values)
+	_Uniforms[l, t](location(program, uniform), n, values)

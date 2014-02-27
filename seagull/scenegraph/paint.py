@@ -275,8 +275,8 @@ def _create(name, enable_sample_shading=True, **default_uniforms):
 			_current_uniforms = {}
 		uniforms = dict(default_uniforms)
 		uniforms.update(kwargs)
-		uniforms["projection_transform"] = Ortho(*OffscreenContext.orthos[-1])
-		uniforms["mask_transform"] = _MaskContext.transforms[-1]
+		uniforms["projection_transform"] = Ortho(*OffscreenContext.orthos[-1]).uniform()
+		uniforms["mask_transform"] = _MaskContext.transforms[-1].uniform()
 		uniforms["masking"] = [len(_MaskContext.textures) > 1]
 		for k in uniforms:
 			v = uniforms[k]
@@ -352,10 +352,11 @@ def _stencil_nonzero(n):
 
 def _make_paint(_stencil):
 	def paint(color, alpha, data, transform, origin, bbox):
+		paint_transform = product(*color.transform).inverse() * \
+		                  color.units(origin, bbox)
 		color._use_program(color=[color.rgb], alpha=[float(alpha)],
-		                   modelview_transform=transform,
-		                   paint_transform=product(*color.transform).inverse()*
-		                                   color.units(origin, bbox))
+		                   modelview_transform=transform.uniform(),
+		                   paint_transform=paint_transform.uniform())
 		n, vbo_id = data
 		_gl.BindBuffer(_gl.ARRAY_BUFFER, vbo_id)
 		_gl.VertexAttribPointer(_ATTRIB_LOCATIONS[b"vertex"], 2, _gl.FLOAT,
@@ -419,9 +420,6 @@ class _Texture(_Paint):
 		self.texture_id = texture_id
 		self.rgb = color.rgb
 	
-	def __del__(self):
-		_gl.DeleteTextures([self.texture_id])
-	
 	def _use_program(self, **kwargs):
 		_gl.BindTexture(_gl.TEXTURE_2D, self.texture_id)
 		_use_texture(**kwargs)
@@ -437,9 +435,6 @@ class _MaskContext(_Context):
 		self.transform = Shrink(x, y, width, height)
 		self.texture_id = texture_id
 	
-	def __del__(self):
-		_gl.DeleteTextures([self.texture_id])
-
 	def enter(self):
 		self.textures.append(self.texture_id)
 		self.transforms.append(self.transform)

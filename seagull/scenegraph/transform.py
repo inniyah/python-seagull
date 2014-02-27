@@ -47,9 +47,9 @@ class _Transform(_Base):
 			sx -= hx*hy/sy
 		return (tx, ty), (cosa, sina), (hx, hy), (sx, sy)
 
-	def column_major(self):
+	def uniform(self):
 		a, b, c, d, e, f = self.abcdef
-		return (a, b, 0., c, d, 0., e, f, 1.)
+		return [(a, b, 0., c, d, 0., e, f, 1.)]
 
 	def __str__(self):
 		return "%s(" % self.tag + \
