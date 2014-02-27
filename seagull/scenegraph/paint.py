@@ -24,8 +24,12 @@ _ATTRIB_LOCATIONS = {
 
 _VERT_SHADER = """
 	#version %(GLSL_VERSION)s
+	#if __VERSION__ >= 150
+	#	define attribute in
+	#	define varying   out
+	#endif
 	
-	%(attribute)s vec2 vertex;
+	attribute vec2 vertex;
 	
 	uniform vec3 color;
 	uniform float alpha;
@@ -36,9 +40,9 @@ _VERT_SHADER = """
 	uniform mat3 paint_transform;
 	uniform mat3 mask_transform;
 	
-	%(varying)s vec4 front_color;
-	%(varying)s vec2 paint_coord;
-	%(varying)s vec2 mask_coord;
+	varying vec4 front_color;
+	varying vec2 paint_coord;
+	varying vec2 mask_coord;
 	
 	void main() {
 		front_color = vec4(color, alpha);
@@ -51,31 +55,32 @@ _VERT_SHADER = """
 
 _MAIN_FRAG_SHADER = """
 	#version %(GLSL_VERSION)s
+	#if __VERSION__ >= 150
+	#define varying      in
+	#define texture2D    texture
+	#define gl_FragColor fragment_color
+	out vec4 fragment_color;
+	#endif
 	
 	uniform bool masking;
 	uniform sampler2D mask;
 	
 	const vec4 luminance = vec4(.2125, .7154, .0721, 0.);
 	
-	%(varying)s vec4 front_color;
-	%(varying)s vec2 mask_coord;
+	varying vec4 front_color;
+	varying vec2 mask_coord;
 	
 	vec4 color(); // filling color
 	
 	vec4 frag_color() {
 		vec4 color = color();
 		if(masking) {
-			color.a *= dot(luminance, %(texture2D)s(mask, mask_coord));
+			color.a *= dot(luminance, texture2D(mask, mask_coord));
 		}
 		return front_color * color;
 	}
 	
-	#if __VERSION__ >= 150
-	out vec4 frag_color;
-	void main() { frag_color = frag_color(); }
-	#else
 	void main() { gl_FragColor = frag_color(); }
-	#endif
 """
 
 
@@ -92,13 +97,17 @@ _SOLID_FRAG_SHADER = """
 
 _TEXTURE_FRAG_SHADER = """
 	#version %(GLSL_VERSION)s
+	#if __VERSION__ >= 150
+	#define varying      in
+	#define texture2D    texture
+	#endif
 	
 	uniform sampler2D texture;
 	
-	%(varying)s vec2 paint_coord;
+	varying vec2 paint_coord;
 	
 	vec4 color() {
-		return %(texture2D)s(texture, paint_coord);
+		return texture2D(texture, paint_coord);
 	}
 
 """
@@ -107,6 +116,9 @@ MAX_STOPS = 21
 
 _GRADIENT_FRAG_SHADER = """
 	#version %(GLSL_VERSION)s
+	#if __VERSION__ >= 150
+	#define varying      in
+	#endif
 	
 	const int N = %(MAX_STOPS)s;
 	
@@ -187,11 +199,14 @@ _RADIAL_OFFSET_FRAG_SHADER = """
 
 _PATTERN_FRAG_SHADER = """
 	#version %(GLSL_VERSION)s
+	#if __VERSION__ >= 150
+	#define varying      in
+	#endif
 	
 	uniform vec2 origin;
 	uniform vec2 period;
 	
-	%(varying)s vec2 paint_coord;
+	varying vec2 paint_coord;
 	
 	vec4 color() {
 		vec2 uv = mod(paint_coord + origin, period);
