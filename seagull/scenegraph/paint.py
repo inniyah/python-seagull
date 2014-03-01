@@ -127,7 +127,7 @@ _GRADIENT_FRAG_SHADER = """
 	uniform vec4 colors[N];
 	uniform int spread;
 	
-	%(varying)s vec2 paint_coord;
+	varying vec2 paint_coord;
 	
 	float o(vec2 p); // offset at point p in the gradient
 	

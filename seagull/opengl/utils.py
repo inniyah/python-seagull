@@ -225,8 +225,10 @@ def create_shader(shader_type, source, **kwargs):
 	version = get_opengl_version()
 	if version < (2, 1):
 		raise RuntimeError("unsupported OpenGL version %s", version)
+	defines = {"GLSL_VERSION": "120" if version < (3, 2) else "150"}
+	defines.update(kwargs)
 	shader = _gl.CreateShader(shader_type)
-	_gl.ShaderSource(shader, source % {"GLSL_VERSION": "120" if version < (3, 2) else "150"})
+	_gl.ShaderSource(shader, source % defines)
 	_gl.CompileShader(shader)
 	if _gl.GetShaderiv(shader, _gl.COMPILE_STATUS) != _gl.TRUE:
 		raise RuntimeError(_gl.GetShaderInfoLog(shader))
