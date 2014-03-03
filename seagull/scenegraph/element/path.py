@@ -268,7 +268,7 @@ class Path(Element):
 		return _bbox(points)
 	
 	
-	def _render(self, transform, inheriteds):
+	def _render(self, transform, inheriteds, context):
 		du2 = _du2(transform)
 		origin = self.x, self.y
 		
@@ -279,13 +279,13 @@ class Path(Element):
 				"nonzero": fill.paint_nonzero,
 				"evenodd": fill.paint_evenodd,
 			}[self.fill_rule]
-			paint(self.fill_opacity, fills, transform, origin, self._bbox)
+			paint(self.fill_opacity, fills, transform, context, origin, self._bbox)
 		
 		stroke = self._color(self.stroke)
 		if stroke and self.stroke_width > 0.:
 			strokes, correction = self._strokes_data(du2)
 			opacity = self.stroke_opacity * correction
-			stroke.paint_one(opacity, strokes, transform, origin, self._bbox)
+			stroke.paint_one(opacity, strokes, transform, context, origin, self._bbox)
 	
 	
 	def _hit_test(self, x, y, transform):

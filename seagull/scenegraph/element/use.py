@@ -31,8 +31,8 @@ class Use(Element):
 	def _aabbox(self, transform, inheriteds):
 		return self.element.aabbox(transform, inheriteds)
 	
-	def _render(self, transform, inheriteds):
-		self.element.render(transform, inheriteds)
+	def _render(self, transform, inheriteds, context):
+		self.element.render(transform, inheriteds, context)
 
 	def _pick_content(self, x, y, transform):
 		return self.element.pick(x, y, transform)

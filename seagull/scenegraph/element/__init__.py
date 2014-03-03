@@ -156,9 +156,11 @@ class Element(_Element):
 			return self.color
 		return color
 	
-	def render(self, transform=Matrix(), inheriteds=_INHERITEDS,
+	def render(self, transform=Matrix(), inheriteds=_INHERITEDS, context=None,
 	                 clipping=True, masking=True, opacity=True):
 		inheriteds = self._inherit(inheriteds)
+		if context is None:
+			context = OffscreenContext()
 		
 		if (clipping and self.clip_path) or (masking and self.mask):
 			if clipping and self.clip_path:
@@ -169,33 +171,33 @@ class Element(_Element):
 				mask, units = self.mask, "maskContentUnits"
 			
 			mask_transform = self._units(mask, units)
-			with OffscreenContext(mask.aabbox(transform*mask_transform),
-			                      (0., 0., 0., 0.)) as ((x, y), (width, height),
-			                                            mask_texture_id):
+			with context(mask.aabbox(transform*mask_transform),
+			             (0., 0., 0., 0.)) as ((x, y), (width, height),
+			                                   mask_texture_id):
 				if not mask_texture_id:
 					return
-				mask.render(transform*mask_transform)
+				mask.render(transform*mask_transform, context=context)
 			
 			with _MaskContext((x, y), (width, height), mask_texture_id):
-				self.render(transform, inheriteds,
+				self.render(transform, inheriteds, context,
 				            clipping=clipping, masking=masking, opacity=opacity)
 		
 		elif opacity and self.opacity < 1.:
-			with OffscreenContext(self.aabbox(transform, inheriteds)) as \
+			with context(self.aabbox(transform, inheriteds)) as \
 			     ((x, y), (width, height), elem_texture_id):
 				if not elem_texture_id:
 					return
-				self.render(transform, inheriteds,
+				self.render(transform, inheriteds, context,
 				            clipping=clipping, masking=masking, opacity=False)
 			
 			Rectangle(x=x, y=y, width=width, height=height,
 			          fill=_Texture(elem_texture_id),
-			          fill_opacity=self.opacity).render()
+			          fill_opacity=self.opacity).render(context=context)
 		
 		else:
-			self._render(transform*self.matrix(), inheriteds)
+			self._render(transform*self.matrix(), inheriteds, context)
 	
-	def _render(self, transform, inheriteds):
+	def _render(self, transform, inheriteds, context):
 		raise NotImplementedError
 	
 	

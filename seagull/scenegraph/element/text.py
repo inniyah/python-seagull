@@ -90,7 +90,7 @@ class Text(Element):
 	def _aabbox(self, transform, inheriteds):
 		return self._text_bbox.aabbox(transform * Translate(self._anchor()), inheriteds)
 	
-	def _render(self, transform, inheriteds):
+	def _render(self, transform, inheriteds, context):
 		font_size = self.font_size
 		font_face = self.font_face
 		
@@ -159,7 +159,7 @@ class Text(Element):
 			if not vector:
 				for letter in letters.children:
 					letter.element.fill.rgb = self.fill.rgb
-			letters.render(transform, inheriteds)
+			letters.render(transform, inheriteds, context)
 		
 		else:
 			# multi-pass rendering if a gradient or pattern is used
@@ -188,7 +188,7 @@ class Text(Element):
 				if filler_fill:
 					filler.fill, filler.fill_opacity = filler_fill, filler_opacity
 					mask.fill, mask.stroke = masking
-					filler.render(transform, inheriteds)
+					filler.render(transform, inheriteds, context)
 	
 	
 	def index(self, x, y=0):

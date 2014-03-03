@@ -43,7 +43,7 @@ class Image(Rectangle):
 		                      pil_image.tobytes(),
 		                      pil_image.mode)
 
-	def _render(self, transform, inheriteds):
+	def _render(self, transform, inheriteds, context):
 		(width, height), data, format = self._texture_args
 		del self._texture_args
 		
@@ -52,4 +52,4 @@ class Image(Rectangle):
 		self._attributes.remove("fill")
 		
 		self._render = super(Image, self)._render
-		self._render(transform, inheriteds)
+		self._render(transform, inheriteds, context)

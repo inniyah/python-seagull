@@ -35,7 +35,6 @@ gl_prepare = gl_preparer()
 
 def gl_reshape(width, height):
 	_gl.Viewport(0, 0, width, height)
-	OffscreenContext.orthos = [(0, width, height, 0)]
 
 
 def gl_displayer(*_elements):
@@ -85,22 +84,31 @@ def create_texture(width, height, data=None, format=_gl.RGBA, max_level=0,
 	
 	return texture_id
 
+
 class OffscreenContext:
 	"""offscreen framebuffer context."""
-	fbos = [(0, None, None)]
-	orthos = [None]
 	
-	def __init__(self, aabbox, bg_color=None):
+	def __init__(self):
+		self.fbos = [(0, None, None)]
+		_, _, width, height = _gl.GetIntegerv(_gl.VIEWPORT)
+		self.orthos = [(0, int(width), int(height), 0)]
+		self.colors = []
+		self.textures = []
+	
+	def __call__(self, aabbox, bg_color=None):
 		self.samples = _gl.GetInteger(_gl.SAMPLES)
 		self.aabbox = aabbox
 		self.bg_color = bg_color
+		return self
 	
 	def __enter__(self):
+		self.textures.append(0)
+
 		(x_min, y_min), (x_max, y_max) = self.aabbox
 		if x_max <= x_min or y_max <= y_min:
 			return (0, 0), (0, 0), 0
 		
-		self.fb_background, _, _ = self.fbos[-1]
+		fb_background, _, _ = self.fbos[-1]
 		X_min, X_max, Y_max, Y_min = self.orthos[-1]
 
 		x_min, x_max = max(int(floor(x_min-1)), X_min), min(int(ceil(x_max+1)), X_max)
@@ -126,7 +134,7 @@ class OffscreenContext:
 		assert _gl.CheckFramebufferStatus(_gl.FRAMEBUFFER) == _gl.FRAMEBUFFER_COMPLETE
 	
 		# offscreen rendering
-		_gl.BindFramebuffer(_gl.READ_FRAMEBUFFER, self.fb_background)
+		_gl.BindFramebuffer(_gl.READ_FRAMEBUFFER, fb_background)
 		if self.bg_color is None:
 			x, y = x_min-X_min, Y_max-y_max
 			_gl.BlitFramebuffer(x, y, x+width, y+height,
@@ -141,25 +149,27 @@ class OffscreenContext:
 
 		self.fbos.append((fb_ms, rb_color, rb_depth_stencil))
 		self.orthos.append((x_min, x_max, y_max, y_min))
+		self.colors.append(self.bg_color)
 		
-		self.texture_color = _texture_id(_gl.GenTextures(1))
-		return (x_min, y_min), (width, height), self.texture_color
-		
+		self.textures[-1] = texture_color = _texture_id(_gl.GenTextures(1))
+		return (x_min, y_min), (width, height), texture_color
+	
+	
 	def __exit__(self, *args):
-		try:
-			self.texture_color
-		except AttributeError:
+		texture_color = self.textures.pop()
+		if not texture_color:
 			return
 		
 		fb_ms, rb_color, rb_depth_stencil = self.fbos.pop()
 		x_min, x_max, y_max, y_min = self.orthos.pop()
 		width, height = x_max-x_min, y_max-y_min
+		bg_color = self.colors.pop()
 
 		# fbo for texture
 		fb_texture = _gl.GenFramebuffers(1)
 		_gl.BindFramebuffer(_gl.DRAW_FRAMEBUFFER, fb_texture)
-		_gl.BindTexture(_gl.TEXTURE_2D, self.texture_color)
-		format = _gl.RGB if self.bg_color is None else _gl.RGBA
+		_gl.BindTexture(_gl.TEXTURE_2D, texture_color)
+		format = _gl.RGB if bg_color is None else _gl.RGBA
 		_gl.TexImage2D(_gl.TEXTURE_2D, 0,
 		               format, width, height, 0,
 		               format, _gl.UNSIGNED_BYTE, None)
@@ -169,7 +179,7 @@ class OffscreenContext:
 		_gl.TexParameteri(_gl.TEXTURE_2D, _gl.TEXTURE_MAG_FILTER, _gl.NEAREST)
 		_gl.TexParameteri(_gl.TEXTURE_2D, _gl.TEXTURE_MIN_FILTER, _gl.NEAREST)
 		_gl.FramebufferTexture2D(_gl.FRAMEBUFFER, _gl.COLOR_ATTACHMENT0,
-		                         _gl.TEXTURE_2D, self.texture_color, 0)
+		                         _gl.TEXTURE_2D, texture_color, 0)
 		assert _gl.CheckFramebufferStatus(_gl.FRAMEBUFFER) == _gl.FRAMEBUFFER_COMPLETE
 
 		# blit render buffer to texture
@@ -180,8 +190,9 @@ class OffscreenContext:
 		# clean up
 		_gl.DeleteRenderbuffers(2, (_gl.uint * 2)(rb_color, rb_depth_stencil))
 		_gl.DeleteFramebuffers(2, (_gl.uint * 2)(fb_ms, fb_texture))
-
-		_gl.BindFramebuffer(_gl.DRAW_FRAMEBUFFER, self.fb_background)
+		
+		fb_background, _, _ = self.fbos[-1]
+		_gl.BindFramebuffer(_gl.DRAW_FRAMEBUFFER, fb_background)
 
 		x_min, x_max, y_max, y_min = self.orthos[-1]
 		_gl.Viewport(0, 0, x_max-x_min, y_max-y_min)

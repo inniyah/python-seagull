@@ -9,8 +9,7 @@ paint servers
 
 from ..opengl import gl as _gl
 from ..opengl.utils import (get_opengl_version,
-                            create_shader, create_program, set_uniform,
-                            OffscreenContext)
+                            create_shader, create_program, set_uniform)
 from ._common import _Element, _Context
 
 from .transform import Translate, Matrix, Ortho, Shrink, product
@@ -290,7 +289,6 @@ def _create(name, enable_sample_shading=True, **default_uniforms):
 			_current_uniforms = {}
 		uniforms = dict(default_uniforms)
 		uniforms.update(kwargs)
-		uniforms["projection_transform"] = Ortho(*OffscreenContext.orthos[-1]).uniform()
 		uniforms["mask_transform"] = _MaskContext.transforms[-1].uniform()
 		uniforms["masking"] = [len(_MaskContext.textures) > 1]
 		for k in uniforms:
@@ -366,12 +364,14 @@ def _stencil_nonzero(n):
 
 
 def _make_paint(_stencil):
-	def paint(color, alpha, data, transform, origin, bbox):
+	def paint(color, alpha, data, transform, context, origin, bbox):
 		paint_transform = product(*color.transform).inverse() * \
 		                  color.units(origin, bbox)
+		projection_transform = Ortho(*context.orthos[-1])
 		color._use_program(color=[color.rgb], alpha=[float(alpha)],
 		                   modelview_transform=transform.uniform(),
-		                   paint_transform=paint_transform.uniform())
+		                   paint_transform=paint_transform.uniform(),
+		                   projection_transform=projection_transform.uniform())
 		n, vbo_id = data
 		_gl.BindBuffer(_gl.ARRAY_BUFFER, vbo_id)
 		_gl.VertexAttribPointer(_ATTRIB_LOCATIONS[b"vertex"], 2, _gl.FLOAT,

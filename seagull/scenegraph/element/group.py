@@ -30,9 +30,9 @@ class Group(Element):
 		bboxes = (child.aabbox(transform, inheriteds) for child in self.children)
 		return _bbox(bbox for bbox in bboxes if bbox != _empty_bbox)
 	
-	def _render(self, transform, inheriteds):
+	def _render(self, transform, inheriteds, context):
 		for child in self.children:
-			child.render(transform, inheriteds)
+			child.render(transform, inheriteds, context)
 					
 	def _pick_content(self, x, y, transform):
 		hits = []
