@@ -20,6 +20,7 @@ from .transform import Translate, Matrix, Ortho, Shrink, product
 
 _ATTRIB_LOCATIONS = {
 	b"vertex": 0,
+	b"offset": 1,
 }
 
 _VERT_SHADER = """
@@ -30,6 +31,7 @@ _VERT_SHADER = """
 	#endif
 	
 	attribute vec2 vertex;
+	attribute float offset;
 	
 	uniform vec3 color;
 	uniform float alpha;
@@ -43,12 +45,14 @@ _VERT_SHADER = """
 	varying vec4 front_color;
 	varying vec2 paint_coord;
 	varying vec2 mask_coord;
+	varying float dash_offset;
 	
 	void main() {
 		front_color = vec4(color, alpha);
 		vec3 pixel_position = modelview_transform * vec3(vertex, 1.);
 		paint_coord = (paint_transform * vec3(vertex, 1.)).xy;
 		mask_coord = (mask_transform * pixel_position).xy;
+		dash_offset = offset;
 		gl_Position = vec4((projection_transform * pixel_position).xy, 0., 1.);
 	}
 """
@@ -69,10 +73,14 @@ _MAIN_FRAG_SHADER = """
 	
 	varying vec4 front_color;
 	varying vec2 mask_coord;
+	varying float dash_offset;
 	
 	vec4 color(); // filling color
 	
 	vec4 frag_color() {
+		if(mod(dash_offset, 10.) < 5.) {
+			discard;
+		}
 		vec4 color = color();
 		if(masking) {
 			color.a *= dot(luminance, texture2D(mask, mask_coord));
@@ -375,6 +383,8 @@ def _make_paint(_stencil):
 		n, vbo_id = data
 		_gl.BindBuffer(_gl.ARRAY_BUFFER, vbo_id)
 		_gl.VertexAttribPointer(_ATTRIB_LOCATIONS[b"vertex"], 2, _gl.FLOAT,
+		                        False, 0, None)
+		_gl.VertexAttribPointer(_ATTRIB_LOCATIONS[b"offset"], 1, _gl.FLOAT,
 		                        False, 0, None)
 		
 		for mask, func, stencil in [(_gl.FALSE, _gl.ALWAYS,   _stencil),
