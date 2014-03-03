@@ -241,20 +241,15 @@ class Path(Element):
 			width = self.stroke_width
 			opacity_correction = 1.
 		
-		# strokes
-		strokes, offsets = [], []
-		for path, closed, joins in paths:
-			s, o = _stroke(path, closed, joins, width, du,
-			               self.stroke_linecap, self.stroke_linejoin,
-			               self.stroke_miterlimit)
-			strokes.append(s)
-			offsets.append(o)
-		return _join_strips(strokes), _join_strips(offsets), opacity_correction
+		return _join_strips(_stroke(path, closed, joins, width, du,
+		                            self.stroke_linecap, self.stroke_linejoin,
+		                            self.stroke_miterlimit)
+		                    for path, closed, joins in paths), opacity_correction
 	
 	@_cache(_stroke_state)
 	def _strokes_data(self, du2):
-		strokes, offsets, opacity_correction = self._strokes(du2)
-		return create_vbo(strokes), create_vbo(offsets), opacity_correction
+		strokes, opacity_correction = self._strokes(du2)
+		return create_vbo(strokes), opacity_correction
 	
 	
 	def _aabbox(self, transform, inheriteds):
@@ -266,7 +261,7 @@ class Path(Element):
 			if fills:
 				points.append(transform.project(*p) for p in fills)
 		if self.stroke and self.stroke_width > 0.:
-			strokes, _, _ = self._strokes(du2)
+			strokes, _ = self._strokes(du2)
 			if strokes:
 				points.append(transform.project(*p) for p in strokes)
 		
@@ -288,7 +283,7 @@ class Path(Element):
 		
 		stroke = self._color(self.stroke)
 		if stroke and self.stroke_width > 0.:
-			strokes, offsets, correction = self._strokes_data(du2)
+			strokes, correction = self._strokes_data(du2)
 			opacity = self.stroke_opacity * correction
 			stroke.paint_one(opacity, strokes, transform, origin, self._bbox)
 	
@@ -310,7 +305,7 @@ class Path(Element):
 					hit = fill_hit(x, y, fills)
 
 		if not hit and self.stroke and self.stroke_width > 0.:
-			strokes, _, _ = self._strokes(du2)
+			strokes, _ = self._strokes(du2)
 			if strokes:
 				hit = _stroke_hit(x, y, strokes)
 		

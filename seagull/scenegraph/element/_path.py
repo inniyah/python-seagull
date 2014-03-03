@@ -253,14 +253,12 @@ def _stroke(path, closed, joins, width, du=1.,
 	_cap = _caps[cap]
 	_join = _joins[join]
 	stroke = []
-	offsets = []
 	
 	path_points = _enumerate_unique(path)
 	(i0, p0) = next(path_points)
 	(i1, p1) = next(path_points, (i0, p0))
 	p0i, p1i = p0, p1
-	offset = _h(p0, p1)
-
+	
 	join_indices = iter(joins)
 	next_join = next(join_indices)
 	while next_join < i1:
@@ -273,20 +271,16 @@ def _stroke(path, closed, joins, width, du=1.,
 		else:
 			j = _join_miter(p0, p1, p2, hw, du, 1.)
 		stroke += j
-		offsets += [offset] * len(j)
 		i1 = i2
 		p0, p1 = p1, p2
-		offset += _h(p0, p1)
-
+	
 	if closed:
 		b = e = _join(p0, p1, p1i, hw, du, miterlimit)
 	else:
 		b = _cap(p0i, p1i, hw, du)
 		e = _cap(p0,  p1,  hw, du, start=False)
 	
-	stroke = b + stroke + e
-	offsets = [0.] * len(b) + offsets + [offset] * len(e)
-	return stroke, offsets
+	return b + stroke + e
 
 
 # filling ####################################################################
