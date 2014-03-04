@@ -90,15 +90,3 @@ class _Element(_Base):
 	def _xml_attr(self, defs):
 		defs.append(self)
 		return "url(#%s)" % self.id
-
-
-class _Context(_Base):
-	"""context manager"""
-	
-	def __enter__(self):
-		return self.enter()
-	def __exit__(self, type, value, tb):
-		self.exit()
-	
-	def enter(self): pass
-	def exit(self):  pass

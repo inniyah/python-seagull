@@ -10,7 +10,7 @@ paint servers
 from ..opengl import gl as _gl
 from ..opengl.utils import (get_opengl_version,
                             create_shader, create_program, set_uniform)
-from ._common import _Element, _Context
+from ._common import _Element
 
 from .transform import Translate, Matrix, Ortho, Shrink, product
 
@@ -440,7 +440,7 @@ class _Texture(_Paint):
 		_use_texture(**kwargs)
 
 
-class _MaskContext(_Context):
+class _MaskContext:
 	textures = [0]
 	transforms = [Matrix()]
 	
@@ -450,14 +450,14 @@ class _MaskContext(_Context):
 		self.transform = Shrink(x, y, width, height)
 		self.texture_id = texture_id
 	
-	def enter(self):
+	def __enter__(self):
 		self.textures.append(self.texture_id)
 		self.transforms.append(self.transform)
 		_gl.ActiveTexture(_gl.TEXTURE1)
 		_gl.BindTexture(_gl.TEXTURE_2D, self.texture_id)
 		_gl.ActiveTexture(_gl.TEXTURE0)
 
-	def exit(self):
+	def __exit__(self, *args):
 		assert self.textures.pop() == self.texture_id
 		assert self.transforms.pop() == self.transform
 		_gl.ActiveTexture(_gl.TEXTURE1)
