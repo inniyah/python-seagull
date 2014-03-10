@@ -24,8 +24,8 @@ _ATTRIB_LOCATIONS = {
 _VERT_SHADER = """
 	#version %(GLSL_VERSION)s
 	#if __VERSION__ >= 150
-	#	define attribute in
-	#	define varying   out
+	#define attribute in
+	#define varying   out
 	#endif
 	
 	attribute vec2 vertex;
@@ -97,8 +97,8 @@ _SOLID_FRAG_SHADER = """
 _TEXTURE_FRAG_SHADER = """
 	#version %(GLSL_VERSION)s
 	#if __VERSION__ >= 150
-	#define varying      in
-	#define texture2D    texture
+	#define varying   in
+	#define texture2D texture
 	#endif
 	
 	uniform sampler2D texture;
@@ -116,7 +116,7 @@ MAX_STOPS = 21
 _GRADIENT_FRAG_SHADER = """
 	#version %(GLSL_VERSION)s
 	#if __VERSION__ >= 150
-	#define varying      in
+	#define varying in
 	#endif
 	
 	const int N = %(MAX_STOPS)s;
@@ -199,7 +199,7 @@ _RADIAL_OFFSET_FRAG_SHADER = """
 _PATTERN_FRAG_SHADER = """
 	#version %(GLSL_VERSION)s
 	#if __VERSION__ >= 150
-	#define varying      in
+	#define varying in
 	#endif
 	
 	uniform vec2 origin;
@@ -248,6 +248,8 @@ _shaders = {
 	]
 }
 
+
+# programs ###################################################################
 
 _programs = {}
 def _program(name):
@@ -307,39 +309,7 @@ _use_radial_gradient = _create("radial_gradient", mask=[1])
 _use_pattern         = _create("pattern", mask=[1])
 
 
-# utils ######################################################################
-
-_BASE = 255.
-def _float(i, base=_BASE):
-	"""convert byte color components to float"""
-	return float(i/base if isinstance(i, int) else i)
-
-def _stop(o, c, a=1.):
-	"""add optional alpha to gradient stop definitions"""
-	if c is Color.none:
-		c = Color.black
-		a = 0.
-	elif c is Color.current: # TODO: should be fixed
-		c = Color.black
-		a = 0.
-	return (float(o), (c._r, c._g, c._b, a))
-
-
-def _object_bbox(origin, bbox):
-	(x_min, y_min), (x_max, y_max) = bbox
-	try:
-		return Shrink(x_min, y_min, x_max-x_min, y_max-y_min)
-	except ZeroDivisionError:
-		return Matrix()
-
-def _user_space(origin, bbox):
-	return Translate(*origin)
-
-
-_UNITS = {
-	"objectBoundingBox": _object_bbox,
-	"userSpaceOnUse":    _user_space,
-}
+# painting ##################################################################
 
 def _stencil_op(n, op):
 	_gl.StencilOp(_gl.KEEP, _gl.KEEP, op)
@@ -385,7 +355,23 @@ def _make_paint(_stencil):
 	return paint
 
 
-# solid color ################################################################
+# paint base class ###########################################################
+
+def _object_bbox(origin, bbox):
+	(x_min, y_min), (x_max, y_max) = bbox
+	try:
+		return Shrink(x_min, y_min, x_max-x_min, y_max-y_min)
+	except ZeroDivisionError:
+		return Matrix()
+
+def _user_space(origin, bbox):
+	return Translate(*origin)
+
+_UNITS = {
+	"objectBoundingBox": _object_bbox,
+	"userSpaceOnUse":    _user_space,
+}
+
 
 class _Paint(_Element):
 	_r, _g, _b = 1., 1., 1.
@@ -401,6 +387,14 @@ class _Paint(_Element):
 	paint_one     = _make_paint(_stencil_one)
 	paint_evenodd = _make_paint(_stencil_evenodd)
 	paint_nonzero = _make_paint(_stencil_nonzero)
+
+
+# solid color ################################################################
+
+_BASE = 255.
+def _float(i, base=_BASE):
+	"""convert byte color components to float"""
+	return float(i/base if isinstance(i, int) else i)
 
 
 class Color(_Paint):
@@ -508,6 +502,17 @@ _SPREADS = {
 	"reflect": 1,
 	"repeat":  2,
 }
+
+def _stop(o, c, a=1.):
+	"""add optional alpha to gradient stop definitions"""
+	if c is Color.none:
+		c = Color.black
+		a = 0.
+	elif c is Color.current: # TODO: should be fixed
+		c = Color.black
+		a = 0.
+	return (float(o), (c._r, c._g, c._b, a))
+
 
 class _Gradient(_PaintServer):
 	_DEFAULTS = {
