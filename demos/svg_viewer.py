@@ -13,16 +13,22 @@ import textwrap
 name, args = sys.argv[0], sys.argv[1:]
 
 DEFAULTS = {
-	"debug":  False,
+	"core":    False,
+	"fast":    False,
+	"time":    False,
+	"profile": False,
 	"toolkit": "glut",
 }
 
 def exit_usage(message=None, code=0):
 	usage = textwrap.dedent("""\
-	Usage: %(name)s [-hdt:] <doc.svg>
+	Usage: %(name)s [-hftpk:] <doc.svg>
 		-h --help               print this help message then exit
-		-d --debug              enable gl error checking
-		-t --toolkit [glut|qt]  choose toolkit (defaults to %(toolkit)r)
+		-c --core               enable gl core profile use
+		-f --fast               disable gl error checking
+		-t --time               time gl display performance
+		-p --profile            profile gl display
+		-k --toolkit [glut|qt]  choose toolkit (defaults to %(toolkit)r)
 		<doc.svg>               file to show
 	""" % dict(name=name, **DEFAULTS))
 	if message:
@@ -31,33 +37,34 @@ def exit_usage(message=None, code=0):
 	sys.exit(code)
 
 try:
-	options, args = getopt.getopt(args, "ht:", ["help"])
+	options, args = getopt.getopt(args, "hcftpk:",
+	                                    ["help",
+	                                     "core", "fast", "time", "profile",
+	                                     "toolkit="])
 except getopt.GetoptError as message:
 	exit_usage(message, 1)
 
-
-# options
-
-error_checking = DEFAULTS["debug"]
-toolkit        = DEFAULTS["toolkit"]
+core    = DEFAULTS["core"]
+fast    = DEFAULTS["fast"]
+time    = DEFAULTS["time"]
+profile = DEFAULTS["profile"]
+toolkit = DEFAULTS["toolkit"]
 
 for opt, value in options:
 	if opt in ["-h", "--help"]:
 		exit_usage()
-	elif opt in ["-d", "--debug"]:
-		error_checking = True
-	elif opt in ["-t", "--toolkit"]:
+	elif opt in ["-c", "--core"]:
+		core = True
+	elif opt in ["-f", "--fast"]:
+		fast = True
+	elif opt in ["-t", "--time"]:
+		time = True
+	elif opt in ["-p", "--profile"]:
+		profile = True
+	elif opt in ["-k", "--toolkit"]:
 		toolkit = value
 		if toolkit not in ["glut", "qt"]:
 			exit_usage("toolkit should be one of [glut|qt]", 1)
-
-if not error_checking:
-	import OpenGL
-	OpenGL.ERROR_CHECKING = False
-	OpenGL.ERROR_ON_COPY = True
-	OpenGL.STORE_POINTERS = False
-
-# argument
 
 try:
 	filename, = args
@@ -69,10 +76,16 @@ except:
 
 import os
 
+if fast:
+	import OpenGL
+	OpenGL.ERROR_CHECKING = False
+	OpenGL.ERROR_ON_COPY = True
+	OpenGL.STORE_POINTERS = False
+
 from seagull import scenegraph as sg
 from seagull.scenegraph.transform import product, normalized
 from seagull.xml import parse, serialize
-from seagull.opengl.utils import gl_prepare, gl_reshape, gl_displayer
+from seagull.opengl.utils import gl_prepare, gl_reshape, gl_display
 
 old_cwd = os.getcwd()
 path, filename = os.path.split(filename)
@@ -94,6 +107,49 @@ window_size = int(x_max-x_min+2*margin), int(y_max-y_min+2*margin)
 
 scene = sg.Use(svg, transform=[sg.Translate(margin-x_min, margin-y_min)])
 feedback = sg.Group(fill=None, stroke=sg.Color.red)
+
+
+# display ####################################################################
+
+def profiling(f):
+	"""a profiling decorator"""
+	import cProfile, pstats, atexit
+	pr = cProfile.Profile()
+
+	@atexit.register
+	def report():
+		ps = pstats.Stats(pr).sort_stats("tottime")
+		ps.print_stats()
+
+	def profiled(*args):
+		pr.enable()
+		try:
+			f(*args)
+		finally:
+			pr.disable()
+	return profiled
+
+def timing(f):
+	"""a timing decorator"""
+	import time
+	def timed(*args):
+		start = time.time()
+		try:
+			f(*args)
+		finally:
+			stop = time.time()
+			print(1./(stop-start))
+	return timed
+
+
+def display():
+	gl_display(scene, feedback)
+
+if profile:
+	display = profiling(display)
+
+if time:
+	display = timing(display)
 
 
 # interaction ################################################################
@@ -169,12 +225,14 @@ if toolkit == "glut":
 	from OpenGL.GLUT import *
 
 	glutInit(sys.argv)
-
-	glutInitDisplayString(b"rgba stencil double samples=16 hidpi core")
+	
+	options = ["rgba", "stencil", "double", "samples", "hidpi"]
+	if core:
+		options += ["core"]
+	glutInitDisplayString(" ".join(options).encode())
 	glutInitWindowSize(*window_size)
 	glutCreateWindow(name.encode())
 	
-	display = gl_displayer(scene, feedback)
 	def display_func():
 		display()
 		glutSwapBuffers()
@@ -212,10 +270,15 @@ if toolkit == "glut":
 elif toolkit == "qt":
 	from PyQt5.QtCore import Qt
 	from PyQt5.QtWidgets import QApplication
-	from PyQt5.QtOpenGL import QGL, QGLFormat, QGLWidget
+	from PyQt5.QtOpenGL import QGLFormat, QGLWidget
 
 	app = QApplication(sys.argv)
-	window = QGLWidget(QGLFormat(QGL.SampleBuffers))
+	format = QGLFormat()
+	format.setSampleBuffers(True)
+	if core:
+		format.setVersion(3, 2)
+		format.setProfile(QGLFormat.CoreProfile)
+	window = QGLWidget(format)
 	pixel_ratio = window.devicePixelRatio()
 	window.resize(*(u/pixel_ratio for u in window_size))
 	window.setWindowTitle(name)
@@ -257,14 +320,13 @@ elif toolkit == "qt":
 		
 	window.initializeGL = gl_prepare
 	window.resizeGL = gl_reshape
-	window.paintGL = gl_displayer(scene, feedback)
+	window.paintGL = display
 	window.mousePressEvent = mouse_press
 	window.mouseReleaseEvent = mouse_release
 	window.mouseMoveEvent = mouse_move
 	window.wheelEvent = wheel
 	window.keyReleaseEvent = key_release
 	window.setMouseTracking(True)
-#	window.grabKeyboard()
 	
 	window.show()
 	sys.exit(app.exec_())
