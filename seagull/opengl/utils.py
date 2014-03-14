@@ -134,8 +134,8 @@ class OffscreenContext:
 		assert _gl.CheckFramebufferStatus(_gl.FRAMEBUFFER) == _gl.FRAMEBUFFER_COMPLETE
 	
 		# offscreen rendering
-		_gl.BindFramebuffer(_gl.READ_FRAMEBUFFER, fb_background)
 		if self.bg_color is None:
+			_gl.BindFramebuffer(_gl.READ_FRAMEBUFFER, fb_background)
 			x, y = x_min-X_min, Y_max-y_max
 			_gl.BlitFramebuffer(x, y, x+width, y+height,
 			                    0, 0, width, height,
