@@ -153,10 +153,10 @@ def move(x1, y1):
 	post_redisplay()
 
 
-def keyboard(c, x, y):
-	if c == b'q':
+def keyboard(c):
+	if c == 'q':
 		sys.exit(0)
-	elif c == b's':
+	elif c == 's':
 		sys.stdout.write(serialize(scene))
 	post_redisplay()
 
@@ -190,7 +190,10 @@ if toolkit == "glut":
 			press(BUTTONS[button], x, y)
 		elif state == GLUT_UP:
 			release()
-
+	
+	def keyboard_func(c, x, y):
+		return keyboard(chr(c[0]))
+	
 	motion_func = move
 	post_redisplay = glutPostRedisplay
 
@@ -201,7 +204,7 @@ if toolkit == "glut":
 	glutMouseFunc(mouse_func)
 	glutMotionFunc(motion_func)
 	glutPassiveMotionFunc(motion_func)
-	glutKeyboardFunc(keyboard)
+	glutKeyboardFunc(keyboard_func)
 
 	glutMainLoop()
 
@@ -229,9 +232,11 @@ elif toolkit == "qt":
 		elif event.buttons() & Qt.RightButton:
 			button = RIGHT
 		press(button, *xy(event))
+		event.accept()
 
 	def mouse_release(event):
 		release()
+		event.accept()
 	
 	def wheel(event):
 		x, y = xy(event)
@@ -239,11 +244,15 @@ elif toolkit == "qt":
 		delta = event.angleDelta()
 		move(x+delta.x(), y+delta.y())
 		release()
+		event.accept()
 		
 	def mouse_move(event):
 		move(*xy(event))
 		event.accept()
-
+	
+	def key_release(event):
+		keyboard(event.text())
+	
 	post_redisplay = window.updateGL
 		
 	window.initializeGL = gl_prepare
@@ -253,7 +262,9 @@ elif toolkit == "qt":
 	window.mouseReleaseEvent = mouse_release
 	window.mouseMoveEvent = mouse_move
 	window.wheelEvent = wheel
+	window.keyReleaseEvent = key_release
 	window.setMouseTracking(True)
+#	window.grabKeyboard()
 	
 	window.show()
 	sys.exit(app.exec_())
