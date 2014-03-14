@@ -9,7 +9,17 @@ scenegraph.element.image
 
 from os.path import abspath
 
-from PIL import Image as _Image
+try:
+	from PIL import Image as _Image
+except ImportError:
+	class _Image:
+		size = (0, 0)
+		mode = "RGBA"
+		@classmethod
+		def open(klass, href):
+			return _Image()
+		def tobytes(self):
+			return b""
 
 from ...opengl.utils import create_texture
 from ..paint import Color, _Texture
