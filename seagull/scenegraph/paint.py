@@ -427,7 +427,7 @@ class Color(_Paint):
 class _Texture(_Paint):
 	def __init__(self, texture_id=0, color=Color(1., 1., 1.)):
 		self.texture_id = texture_id
-		self.rgb = color.rgb
+		self.get_rgb, self.set_rgb = color.get_rgb, color.set_rgb
 	
 	def _use_program(self, **kwargs):
 		_gl.BindTexture(_gl.TEXTURE_2D, self.texture_id)
