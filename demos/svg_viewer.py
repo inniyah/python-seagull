@@ -23,13 +23,13 @@ DEFAULTS = {
 def exit_usage(message=None, code=0):
 	usage = textwrap.dedent("""\
 	Usage: %(name)s [-hftpk:] <doc.svg>
-		-h --help               print this help message then exit
-		-c --core               enable gl core profile use
-		-f --fast               disable gl error checking
-		-t --time               time gl display performance
-		-p --profile            profile gl display
-		-k --toolkit [glut|qt]  choose toolkit (defaults to %(toolkit)r)
-		<doc.svg>               file to show
+		-h --help                print this help message then exit
+		-c --core                enable gl core profile use
+		-f --fast                disable gl error checking
+		-t --time                time gl display performance
+		-p --profile             profile gl display
+		-k --toolkit [glut|qt5]  choose toolkit (defaults to %(toolkit)r)
+		<doc.svg>                file to show
 	""" % dict(name=name, **DEFAULTS))
 	if message:
 		sys.stderr.write("%s\n" % message)
@@ -63,8 +63,8 @@ for opt, value in options:
 		profile = True
 	elif opt in ["-k", "--toolkit"]:
 		toolkit = value
-		if toolkit not in ["glut", "qt"]:
-			exit_usage("toolkit should be one of [glut|qt]", 1)
+		if toolkit not in ["glut", "qt5"]:
+			exit_usage("toolkit should be one of [glut|qt5]", 1)
 
 try:
 	filename, = args
@@ -115,12 +115,12 @@ def profiling(f):
 	"""a profiling decorator"""
 	import cProfile, pstats, atexit
 	pr = cProfile.Profile()
-
+	
 	@atexit.register
 	def report():
 		ps = pstats.Stats(pr).sort_stats("tottime")
 		ps.print_stats()
-
+	
 	def profiled(*args):
 		pr.enable()
 		try:
@@ -203,7 +203,7 @@ def move(x1, y1):
 	
 	else:
 		raise RuntimeError("Unexpected interaction state '%s'" % state)
-
+	
 	scene.transform = normalized(scene.transform)
 	x0, y0 = x1, y1
 	post_redisplay()
@@ -223,7 +223,7 @@ def keyboard(c):
 
 if toolkit == "glut":
 	from OpenGL.GLUT import *
-
+	
 	glutInit(sys.argv)
 	
 	options = ["rgba", "stencil", "double", "samples", "hidpi"]
@@ -254,39 +254,92 @@ if toolkit == "glut":
 	
 	motion_func = move
 	post_redisplay = glutPostRedisplay
-
+	
 	gl_prepare()
 	glutReshapeFunc(gl_reshape)
 	glutDisplayFunc(display_func)
-
+	
 	glutMouseFunc(mouse_func)
 	glutMotionFunc(motion_func)
 	glutPassiveMotionFunc(motion_func)
 	glutKeyboardFunc(keyboard_func)
-
+	
 	glutMainLoop()
 
 
-elif toolkit == "qt":
-	from PyQt5.QtCore import Qt
-	from PyQt5.QtWidgets import QApplication
-	from PyQt5.QtOpenGL import QGLFormat, QGLWidget
-
-	app = QApplication(sys.argv)
-	format = QGLFormat()
-	format.setSampleBuffers(True)
+elif toolkit == "qt5":
+	from PyQt5.QtCore import Qt, QEvent
+	from PyQt5.QtGui import (QGuiApplication, QWindow, QSurfaceFormat,
+	                         QOpenGLContext, QOpenGLPaintDevice)
+	
+	app = QGuiApplication(sys.argv)
+	window = QWindow()
+	
+	format = QSurfaceFormat()
+	format.setSamples(16)
+	format.setSwapBehavior(QSurfaceFormat.DoubleBuffer)
+	format.setStencilBufferSize(8)
 	if core:
-		format.setVersion(3, 2)
-		format.setProfile(QGLFormat.CoreProfile)
-	window = QGLWidget(format)
+		format.setProfile(QSurfaceFormat.CoreProfile)
+	
+	window.setSurfaceType(QWindow.OpenGLSurface)
+	window.setFormat(format)
+	window.setTitle(name)
+	
 	pixel_ratio = window.devicePixelRatio()
 	window.resize(*(u/pixel_ratio for u in window_size))
-	window.setWindowTitle(name)
 	
-
+	gl_context = QOpenGLContext(window)
+	gl_context.setFormat(window.requestedFormat())
+	gl_context.create()
+	
+	
+	# asynchronous redisplay
+	
+	def redisplay():
+		display()
+		gl_context.swapBuffers(window)
+	
+	waiting_redisplay = False
+	def post_redisplay():
+		global waiting_redisplay
+		if not waiting_redisplay:
+			waiting_redisplay = True
+			app.postEvent(app, QEvent(QEvent.UpdateRequest))
+	
+	_event = app.event
+	def event(event):
+		global waiting_redisplay
+		if event.type() == QEvent.UpdateRequest:
+			waiting_redisplay = False
+			redisplay()
+			return True
+		return _event(event)
+	app.event = event
+	
+	
+	# managing expose event
+	
+	device = None
+	def expose_event(event):
+		if not window.isExposed():
+			return
+		global device
+		gl_context.makeCurrent(window)
+		if not device:
+			device = QOpenGLPaintDevice()
+			gl_prepare()
+		device.setSize(window.size())
+		redisplay()
+	window.exposeEvent = expose_event
+	window.show()
+	
+	
+	# managing interaction
+	
 	def xy(event):
 		return tuple(u*pixel_ratio for u in (event.x(), event.y()))
-
+	
 	def mouse_press(event):
 		if event.buttons() & Qt.LeftButton:
 			button = LEFT
@@ -296,7 +349,7 @@ elif toolkit == "qt":
 			button = RIGHT
 		press(button, *xy(event))
 		event.accept()
-
+	
 	def mouse_release(event):
 		release()
 		event.accept()
@@ -308,7 +361,7 @@ elif toolkit == "qt":
 		move(x+delta.x(), y+delta.y())
 		release()
 		event.accept()
-		
+	
 	def mouse_move(event):
 		move(*xy(event))
 		event.accept()
@@ -316,17 +369,10 @@ elif toolkit == "qt":
 	def key_release(event):
 		keyboard(event.text())
 	
-	post_redisplay = window.updateGL
-		
-	window.initializeGL = gl_prepare
-	window.resizeGL = gl_reshape
-	window.paintGL = display
 	window.mousePressEvent = mouse_press
 	window.mouseReleaseEvent = mouse_release
 	window.mouseMoveEvent = mouse_move
 	window.wheelEvent = wheel
 	window.keyReleaseEvent = key_release
-	window.setMouseTracking(True)
 	
-	window.show()
 	sys.exit(app.exec_())
