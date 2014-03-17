@@ -121,10 +121,10 @@ def profiling(f):
 		ps = pstats.Stats(pr).sort_stats("tottime")
 		ps.print_stats()
 	
-	def profiled(*args):
+	def profiled(*args, **kwargs):
 		pr.enable()
 		try:
-			f(*args)
+			f(*args, **kwargs)
 		finally:
 			pr.disable()
 	return profiled
@@ -132,24 +132,21 @@ def profiling(f):
 def timing(f):
 	"""a timing decorator"""
 	import time
-	def timed(*args):
+	def timed(*args, **kwargs):
 		start = time.time()
 		try:
-			f(*args)
+			f(*args, **kwargs)
 		finally:
 			stop = time.time()
 			print(1./(stop-start))
 	return timed
 
 
-def display():
-	gl_display(scene, feedback)
-
 if profile:
-	display = profiling(display)
+	gl_display = profiling(gl_display)
 
 if time:
-	display = timing(display)
+	gl_display = timing(gl_display)
 
 
 # interaction ################################################################
@@ -234,7 +231,7 @@ if toolkit == "glut":
 	glutCreateWindow(name.encode())
 	
 	def display_func():
-		display()
+		gl_display(scene, feedback)
 		glutSwapBuffers()
 	
 	BUTTONS = {
@@ -297,7 +294,7 @@ elif toolkit == "qt5":
 	# asynchronous redisplay
 	
 	def redisplay():
-		display()
+		gl_display(scene, feedback)
 		gl_context.swapBuffers(window)
 	
 	waiting_redisplay = False

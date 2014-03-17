@@ -37,12 +37,14 @@ def gl_reshape(width, height):
 	_gl.Viewport(0, 0, width, height)
 
 
-def gl_displayer(*_elements):
-	def display(*elements):
+def gl_displayer(*_elements, swap_buffers=None):
+	def display(*elements, swap_buffers=swap_buffers):
 		_gl.Clear(_gl.COLOR_BUFFER_BIT|_gl.STENCIL_BUFFER_BIT)
 		for elem in elements or _elements:
 			elem.render()
 		_gl.Flush()
+		if swap_buffers is not None:
+			swap_buffers()
 	return display
 
 gl_display = gl_displayer()
