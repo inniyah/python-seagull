@@ -54,7 +54,10 @@ gl_display = gl_displayer()
 
 class _texture_id(int):
 	def __del__(self):
-		_gl.DeleteTextures((_gl.uint*1)(self))
+		try:
+			_gl.DeleteTextures((_gl.uint*1)(self))
+		except AttributeError:
+			pass
 
 def create_texture(width, height, data=None, format=_gl.RGBA, max_level=0,
                    min_filter=_gl.LINEAR_MIPMAP_LINEAR,
@@ -214,7 +217,10 @@ def _c_array(points):
 class _vbo_id(int):
 	"""auto releasing vbo id"""
 	def __del__(self):
-		_gl.DeleteBuffers(1, (_gl.uint*1)(self))
+		try:
+			_gl.DeleteBuffers(1, (_gl.uint*1)(self))
+		except AttributeError:
+			pass
 
 def create_vbo(points):
 	n, vertices = _c_array(points)
