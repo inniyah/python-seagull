@@ -29,7 +29,7 @@ def exit_usage(message=None, code=0):
 		-t --time                time gl display performance
 		-p --profile             profile gl display
 		-k --toolkit [glut|qt5]  choose toolkit (defaults to %(toolkit)r)
-		<doc.svg>                file to show
+		[doc.svg]                file to show (if omitted, reads on stdin)
 	""" % dict(name=name, **DEFAULTS))
 	if message:
 		sys.stderr.write("%s\n" % message)
@@ -66,10 +66,26 @@ for opt, value in options:
 		if toolkit not in ["glut", "qt5"]:
 			exit_usage("toolkit should be one of [glut|qt5]", 1)
 
+if len(args) > 1:
+	exit_usage("at most one file name should be provided", 1)
+
 try:
 	filename, = args
 except:
-	exit_usage("a single file name should be provided", 1)
+	svg = sys.stdin.read()
+else:
+	old_cwd = os.getcwd()
+	path, filename = os.path.split(filename)
+	if path:
+		os.chdir(path)
+	if filename.endswith('z'):
+		import gzip
+		f = gzip.open(filename)
+	else:
+		f = open(filename)
+	svg = f.read()
+	f.close()
+	os.chdir(old_cwd)
 
 
 # scene ######################################################################
@@ -87,19 +103,7 @@ from seagull.scenegraph.transform import product, normalized
 from seagull.xml import parse, serialize
 from seagull.opengl.utils import gl_prepare, gl_reshape, gl_display
 
-old_cwd = os.getcwd()
-path, filename = os.path.split(filename)
-if path:
-	os.chdir(path)
-if filename.endswith('z'):
-	import gzip
-	f = gzip.open(filename)
-else:
-	f = open(filename)
-svg = parse(f.read())
-f.close()
-
-os.chdir(old_cwd)
+svg = parse(svg)
 
 (x_min, y_min), (x_max, y_max) = svg.aabbox()
 margin = 20

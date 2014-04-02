@@ -6,7 +6,7 @@ metadata = {
 	"version":      '0.1',
 	"description":  '2D scene graph based on SVG with OpenGL backend',
 	"author":       'Renaud Blanch',
-	"author_email": 'blanch@imag.fr',
+	"author_email": 'rb@rndblnch.org',
 	"url":          'http://bitbucket.org/rndblnch/seagull',
 	"license":      'GPLv3+',
 	"classifiers":  [
