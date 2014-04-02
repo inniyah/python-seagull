@@ -74,6 +74,7 @@ try:
 except:
 	svg = sys.stdin.read()
 else:
+	import os
 	old_cwd = os.getcwd()
 	path, filename = os.path.split(filename)
 	if path:
@@ -89,8 +90,6 @@ else:
 
 
 # scene ######################################################################
-
-import os
 
 if fast:
 	import OpenGL
