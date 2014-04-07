@@ -94,6 +94,7 @@ else:
 if fast:
 	import OpenGL
 	OpenGL.ERROR_CHECKING = False
+	OpenGL.ERROR_LOGGING = False
 	OpenGL.ERROR_ON_COPY = True
 	OpenGL.STORE_POINTERS = False
 
