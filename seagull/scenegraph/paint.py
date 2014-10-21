@@ -62,7 +62,7 @@ _MAIN_FRAG_SHADER = """
 	#endif
 	
 	uniform bool masking;
-	uniform sampler2D mask;
+	uniform sampler2D mask_sampler;
 	
 	const vec4 luminance = vec4(.2125, .7154, .0721, 0.);
 	
@@ -74,7 +74,7 @@ _MAIN_FRAG_SHADER = """
 	vec4 frag_color() {
 		vec4 color = color();
 		if(masking) {
-			color.a *= dot(luminance, texture2D(mask, mask_coord));
+			color.a *= dot(luminance, texture2D(mask_sampler, mask_coord));
 		}
 		return front_color * color;
 	}
@@ -101,12 +101,12 @@ _TEXTURE_FRAG_SHADER = """
 	#define texture2D texture
 	#endif
 	
-	uniform sampler2D texture;
+	uniform sampler2D texture_sampler;
 	
 	varying vec2 paint_coord;
 	
 	vec4 color() {
-		return texture2D(texture, paint_coord);
+		return texture2D(texture_sampler, paint_coord);
 	}
 
 """
@@ -301,12 +301,12 @@ def _create(name, enable_sample_shading=True, **default_uniforms):
 		set_sample_shading()
 	return _use
 
-_use_solid_color     = _create("solid_color", mask=[1])
-_use_texture         = _create("texture", texture=[0], mask=[1],
+_use_solid_color     = _create("solid_color", mask_sampler=[1])
+_use_texture         = _create("texture", texture_sampler=[0], mask_sampler=[1],
                                enable_sample_shading=False)
-_use_linear_gradient = _create("linear_gradient", mask=[1])
-_use_radial_gradient = _create("radial_gradient", mask=[1])
-_use_pattern         = _create("pattern", mask=[1])
+_use_linear_gradient = _create("linear_gradient", mask_sampler=[1])
+_use_radial_gradient = _create("radial_gradient", mask_sampler=[1])
+_use_pattern         = _create("pattern", mask_sampler=[1])
 
 
 # painting ##################################################################
