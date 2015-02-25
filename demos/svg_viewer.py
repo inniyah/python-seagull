@@ -23,13 +23,13 @@ DEFAULTS = {
 def exit_usage(message=None, code=0):
 	usage = textwrap.dedent("""\
 	Usage: %(name)s [-hftpk:] <doc.svg>
-		-h --help                print this help message then exit
-		-c --core                enable gl core profile use
-		-f --fast                disable gl error checking
-		-t --time                time gl display performance
-		-p --profile             profile gl display
-		-k --toolkit [glut|qt5]  choose toolkit (defaults to %(toolkit)r)
-		[doc.svg]                file to show (if omitted, reads on stdin)
+		-h --help                       print this help message then exit
+		-c --core                       enable gl core profile use
+		-f --fast                       disable gl error checking
+		-t --time                       time gl display performance
+		-p --profile                    profile gl display
+		-k --toolkit [glut|qt5|pyglet]  choose toolkit (defaults to %(toolkit)r)
+		[doc.svg]                       file to show (if omitted, reads on stdin)
 	""" % dict(name=name, **DEFAULTS))
 	if message:
 		sys.stderr.write("%s\n" % message)
@@ -63,8 +63,8 @@ for opt, value in options:
 		profile = True
 	elif opt in ["-k", "--toolkit"]:
 		toolkit = value
-		if toolkit not in ["glut", "qt5"]:
-			exit_usage("toolkit should be one of [glut|qt5]", 1)
+		if toolkit not in ["glut", "qt5", "pyglet"]:
+			exit_usage("toolkit should be one of [glut|qt5|pyglet]", 1)
 
 if len(args) > 1:
 	exit_usage("at most one file name should be provided", 1)
@@ -227,7 +227,7 @@ if toolkit == "glut":
 	
 	glutInit(sys.argv)
 	
-	options = ["rgba", "stencil", "double", "samples", "hidpi"]
+	options = ["rgba", "double", "stencil", "samples", "hidpi"]
 	if core:
 		options += ["core"]
 	glutInitDisplayString(" ".join(options).encode())
@@ -277,8 +277,8 @@ elif toolkit == "qt5":
 	window = QWindow()
 	
 	format = QSurfaceFormat()
-	format.setSamples(16)
 	format.setSwapBehavior(QSurfaceFormat.DoubleBuffer)
+	format.setSamples(16)
 	format.setStencilBufferSize(8)
 	if core:
 		format.setProfile(QSurfaceFormat.CoreProfile)
@@ -377,3 +377,66 @@ elif toolkit == "qt5":
 	window.keyReleaseEvent = key_release
 	
 	sys.exit(app.exec_())
+
+
+elif toolkit == "pyglet":
+	import pyglet
+	
+	print("warning: on cocoa, pyglet does not support retina display and core profile")
+	
+	config = pyglet.gl.Config(
+		double_buffer=True,
+		sample_buffers=1, samples=16,
+		stencil_size=8,
+	)
+	if core:
+		# does not seem to be implemented for pyglet/cocoa
+		config.major_version = 3
+		config.minor_version = 2
+	
+	width, height = window_size
+	window = pyglet.window.Window(
+		width=width, height=height,
+		resizable=True, config=config,
+	)
+	
+	gl_prepare()
+	
+	@window.event
+	def on_resize(width, height):
+		gl_reshape(width, height)
+	
+	@window.event
+	def on_draw():
+		gl_display(scene, feedback)
+	
+	@window.event
+	def on_key_press(symbol, modifiers):
+		keyboard(chr(symbol))
+
+	BUTTONS = {
+		pyglet.window.mouse.LEFT:   LEFT,
+		pyglet.window.mouse.MIDDLE: MIDDLE,
+		pyglet.window.mouse.RIGHT:  RIGHT,
+	}
+	
+	@window.event
+	def on_mouse_press(x, y, button, modifiers):
+		press(BUTTONS[button], x, window.height-y)
+	
+	@window.event
+	def on_mouse_release(x, y, button, modifiers):
+		release()
+
+	@window.event
+	def on_mouse_motion(x, y, dx, dy):
+		move(x, window.height-y)
+	
+	@window.event
+	def on_mouse_drag(x, y, dx, dy, buttons, modifiers):
+		move(x, window.height-y)
+	
+	def post_redisplay():
+		"""pyglet redisplays automatically after handled events."""
+	
+	pyglet.app.run()
