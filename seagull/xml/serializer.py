@@ -20,7 +20,7 @@ def _indent(s, level=1, tab="\t"):
 	indent = tab * level
 	return "\n".join("%s%s" % (indent, line) for line in s.split("\n"))
 
-def serialize(*elems):
+def serialize(*elems, bbox=None):
 	"""serialization of elems into svg+xml."""
 	defs = []
 	xml_elems = [_indent(elem._xml(defs)) for elem in elems]
@@ -29,11 +29,14 @@ def serialize(*elems):
 		elem = defs.pop()
 		xml_defs.add(_indent(elem._xml(defs), 2))
 	
-	(x_min, y_min), (x_max, y_max) = (float("inf"), )*2, (float("-inf"), )*2
-	for elem in elems:
-		(ex_min, ey_min), (ex_max, ey_max) = elem.aabbox()
-		x_min, x_max = min(x_min, ex_min), max(x_max, ex_max)
-		y_min, y_max = min(y_min, ey_min), max(y_max, ey_max)
+	if bbox is not None:
+		(x_min, y_min), (x_max, y_max) = bbox
+	else:
+		(x_min, y_min), (x_max, y_max) = (float("inf"), )*2, (float("-inf"), )*2
+		for elem in elems:
+			(ex_min, ey_min), (ex_max, ey_max) = elem.aabbox()
+			x_min, x_max = min(x_min, ex_min), max(x_max, ex_max)
+			y_min, y_max = min(y_min, ey_min), max(y_max, ey_max)
 
 	def xml_lines():
 		yield _SVG_HEADER % (x_min, y_min, x_max-x_min, y_max-y_min)
