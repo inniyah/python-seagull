@@ -18,17 +18,19 @@ DEFAULTS = {
 	"time":    False,
 	"profile": False,
 	"toolkit": "glut",
+	"margin":  20,
 }
 
 def exit_usage(message=None, code=0):
 	usage = textwrap.dedent("""\
-	Usage: %(name)s [-hftpk:] <doc.svg>
+	Usage: %(name)s [-hftpk:m:] <doc.svg>
 		-h --help                       print this help message then exit
 		-c --core                       enable gl core profile use
 		-f --fast                       disable gl error checking
 		-t --time                       time gl display performance
 		-p --profile                    profile gl display
 		-k --toolkit [glut|qt5|pyglet]  choose toolkit (defaults to %(toolkit)r)
+		-m --margin <size>              add a margin (defaults to %(margin))
 		[doc.svg]                       file to show (if omitted, reads on stdin)
 	""" % dict(name=name, **DEFAULTS))
 	if message:
@@ -37,10 +39,10 @@ def exit_usage(message=None, code=0):
 	sys.exit(code)
 
 try:
-	options, args = getopt.getopt(args, "hcftpk:",
+	options, args = getopt.getopt(args, "hcftpk:m:",
 	                                    ["help",
 	                                     "core", "fast", "time", "profile",
-	                                     "toolkit="])
+	                                     "toolkit=", "margin="])
 except getopt.GetoptError as message:
 	exit_usage(message, 1)
 
@@ -49,6 +51,7 @@ fast    = DEFAULTS["fast"]
 time    = DEFAULTS["time"]
 profile = DEFAULTS["profile"]
 toolkit = DEFAULTS["toolkit"]
+margin  = DEFAULTS["margin"]
 
 for opt, value in options:
 	if opt in ["-h", "--help"]:
@@ -65,6 +68,9 @@ for opt, value in options:
 		toolkit = value
 		if toolkit not in ["glut", "qt5", "pyglet"]:
 			exit_usage("toolkit should be one of [glut|qt5|pyglet]", 1)
+	elif opt in ["-m", "--margin"]:
+		margin = int(value)
+
 
 if len(args) > 1:
 	exit_usage("at most one file name should be provided", 1)
@@ -106,7 +112,6 @@ from seagull.opengl.utils import gl_prepare, gl_reshape, gl_display
 svg = parse(svg)
 
 (x_min, y_min), (x_max, y_max) = svg.aabbox()
-margin = 20
 window_size = int(x_max-x_min+2*margin), int(y_max-y_min+2*margin)
 
 scene = sg.Use(svg, transform=[sg.Translate(margin-x_min, margin-y_min)])
@@ -151,6 +156,21 @@ if profile:
 
 if time:
 	gl_display = timing(gl_display)
+
+
+# screenshot #################################################################
+
+_shot = 0
+def screen_shot(name="screen_shot.%03i.png"):
+	"""window screenshot."""
+	from OpenGL.GL import glGetIntegerv, glReadPixels, GL_VIEWPORT, GL_RGB, GL_UNSIGNED_BYTE
+	x, y, width, height = glGetIntegerv(GL_VIEWPORT)
+	data = glReadPixels(x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE)
+	
+	import png
+	global _shot
+	png.write(open(name % _shot, "wb"), width, height, 3, data)
+	_shot += 1
 
 
 # interaction ################################################################
@@ -215,6 +235,8 @@ def keyboard(c):
 		sys.exit(0)
 	elif c == 's':
 		sys.stdout.write(serialize(scene))
+	elif c == 'p':
+		screen_shot()
 	post_redisplay()
 
 
