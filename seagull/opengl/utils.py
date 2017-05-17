@@ -56,7 +56,7 @@ class _texture_id(int):
 	def __del__(self):
 		try:
 			_gl.DeleteTextures((_gl.uint*1)(self))
-		except AttributeError:
+		except (AttributeError, TypeError):
 			pass
 
 def create_texture(width, height, data=None, format=_gl.RGBA, max_level=0,
@@ -219,7 +219,7 @@ class _vbo_id(int):
 	def __del__(self):
 		try:
 			_gl.DeleteBuffers(1, (_gl.uint*1)(self))
-		except AttributeError:
+		except (AttributeError, TypeError):
 			pass
 
 def create_vbo(points):

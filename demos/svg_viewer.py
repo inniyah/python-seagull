@@ -268,7 +268,10 @@ if toolkit == "glut":
 	
 	def mouse_func(button, state, x, y):
 		if state == GLUT_DOWN:
-			press(BUTTONS[button], x, y)
+			try:
+				press(BUTTONS[button], x, y)
+			except KeyError:
+				pass
 		elif state == GLUT_UP:
 			release()
 	
