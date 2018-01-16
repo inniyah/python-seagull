@@ -30,7 +30,7 @@ def exit_usage(message=None, code=0):
 		-t --time                       time gl display performance
 		-p --profile                    profile gl display
 		-k --toolkit [glut|qt5|pyglet]  choose toolkit (defaults to %(toolkit)r)
-		-m --margin <size>              add a margin (defaults to %(margin))
+		-m --margin <size>              add a margin (defaults to %(margin)s)
 		[doc.svg]                       file to show (if omitted, reads on stdin)
 	""" % dict(name=name, **DEFAULTS))
 	if message:
