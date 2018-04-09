@@ -50,11 +50,22 @@ class _Element(_Base):
 	
 	_state_attributes = ["tag"]
 	attributes = []
+	title = None
 	
 	def _xml(self, defs):
 		"""xml serialization"""
 		u = "<%s %s" % (self.tag, self._xml_attributes(defs))
-		content = self._xml_content(defs)
+		if self.title is None:
+			title = ""
+		else:
+			title = self.title
+			for old, new in [('&', '&amp;'),
+			                 ('<', '&lt;'),
+			                 ('>', '&gt;')]:
+				title = title.replace(old, new)
+			title = "<title>%s</title>\n" % title
+		
+		content = title + self._xml_content(defs)
 		if content.strip():
 			u += ">\n" + \
 			     _indent(content) + "\n" + \
