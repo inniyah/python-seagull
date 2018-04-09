@@ -16,6 +16,8 @@ def _u(v, encoding="utf8"):
 	"""provides a unicode string from anything."""
 	if isinstance(v, str):
 		return v
+	elif isinstance(v, bool):
+		return _u(int(v))
 	elif isinstance(v, (list, tuple)):
 		return " ".join(_u(vi, encoding) for vi in v)
 	elif v is None:

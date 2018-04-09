@@ -20,7 +20,7 @@ def _indent(s, level=1, tab="\t"):
 	indent = tab * level
 	return "\n".join("%s%s" % (indent, line) for line in s.split("\n"))
 
-def serialize(*elems, bbox=None):
+def serialize(*elems, bbox=None, margin=0):
 	"""serialization of elems into svg+xml."""
 	defs = []
 	xml_elems = [_indent(elem._xml(defs)) for elem in elems]
@@ -37,7 +37,9 @@ def serialize(*elems, bbox=None):
 			(ex_min, ey_min), (ex_max, ey_max) = elem.aabbox()
 			x_min, x_max = min(x_min, ex_min), max(x_max, ex_max)
 			y_min, y_max = min(y_min, ey_min), max(y_max, ey_max)
-
+	x_min, y_min = x_min-margin, y_min-margin
+	x_max, y_max = x_max+margin, y_max+margin
+	
 	def xml_lines():
 		yield _SVG_HEADER % (x_min, y_min, x_max-x_min, y_max-y_min)
 		if xml_defs:
