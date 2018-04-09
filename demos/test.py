@@ -84,6 +84,25 @@ def prev_file():
 	return goto(current-1)
 
 
+# screenshot #################################################################
+
+_shot = 0
+def screen_shot(name="screen_shot.%03i.png"):
+	"""window screenshot."""
+	from OpenGL.GL import glGetIntegerv, glReadBuffer, glReadPixels
+	from OpenGL.GL import GL_VIEWPORT, GL_READ_BUFFER, GL_FRONT, GL_RGB, GL_UNSIGNED_BYTE
+	x, y, width, height = glGetIntegerv(GL_VIEWPORT)
+	read_buffer = glGetIntegerv(GL_READ_BUFFER)
+	glReadBuffer(GL_FRONT)
+	data = glReadPixels(x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE)
+	glReadBuffer(read_buffer)
+	
+	import png
+	global _shot
+	png.write(open(name % _shot, "wb"), width, height, 3, data)
+	_shot += 1
+
+
 # glut callbacks #############################################################
 
 def display():
@@ -98,6 +117,8 @@ def keyboard(c, x, y):
 		sys.exit(0)
 	elif c == b's':
 		sys.stdout.write(serialize(scene))
+	elif c == b'p':
+		screen_shot()
 	elif c == b']':
 		next_file()
 	elif c == b'[':
