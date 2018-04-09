@@ -63,7 +63,7 @@ class _Element(_Base):
 			                 ('<', '&lt;'),
 			                 ('>', '&gt;')]:
 				title = title.replace(old, new)
-			title = "<title>%s</title>\n" % title
+			title = "<title>%s</title>" % title
 		
 		content = title + self._xml_content(defs)
 		if content.strip():
