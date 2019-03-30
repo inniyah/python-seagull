@@ -4,6 +4,8 @@ seagull
 
 a 2D scene graph based on SVG with OpenGL backend
 
+Cloned from https://bitbucket.org/rndblnch/seagull/
+
 
 Goals & non-goals
 -----------------
