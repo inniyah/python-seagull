@@ -599,4 +599,4 @@ def parse(document, logging_level=logging.ERROR):
 	log.setLevel(logging_level)
 	parser = Parser()
 	parser.parse(document)
-	return parser.root
+	return parser.root, parser.elements

@@ -1,3 +1,4 @@
+#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """GLUT based SVG viewer."""
@@ -5,8 +6,12 @@
 
 # imports ####################################################################
 
-import sys
 import os
+import sys
+
+this_dir = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(os.path.join(this_dir, '..'))
+
 import atexit
 import glob
 import traceback
@@ -57,7 +62,7 @@ def load(index):
 			f = gzip.open(filename)
 		else:
 			f = open(filename)
-		svg = parse(f.read(), logging.WARNING)
+		svg, elems = parse(f.read(), logging.WARNING)
 	except:
 		traceback.print_exception(*sys.exc_info())
 		svg = sg.Group()

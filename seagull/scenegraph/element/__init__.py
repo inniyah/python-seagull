@@ -21,7 +21,7 @@ _elements_by_id = _weakdict()
 def _id(element):
 	element_id = getattr(element, "_id", "%X" % id(element))
 	_elements_by_id[element_id] = element
-	return element_id	
+	return element_id
 
 def get_element_by_id(element_id):
 	return _elements_by_id[element_id]

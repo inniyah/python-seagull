@@ -3,10 +3,14 @@
 
 """SVG viewer."""
 
+import os
+import sys
+
+this_dir = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(os.path.join(this_dir, '..'))
 
 # handling args ##############################################################
 
-import sys
 import getopt
 import textwrap
 
@@ -109,7 +113,7 @@ from seagull.scenegraph.transform import product, normalized
 from seagull.xml import parse, serialize
 from seagull.opengl.utils import gl_prepare, gl_reshape, gl_display
 
-svg = parse(svg)
+svg, elems = parse(svg)
 
 (x_min, y_min), (x_max, y_max) = svg.aabbox()
 window_size = int(x_max-x_min+2*margin), int(y_max-y_min+2*margin)
