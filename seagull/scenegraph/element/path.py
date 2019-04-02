@@ -205,7 +205,7 @@ class Path(Element):
 		super(Path, self).__init__(**attributes)
 		self._caches = {}
 		self._states = {}
-	
+		self.active = True
 	
 	@_cache(_fill_state)
 	def _paths(self, du2=1.):
@@ -269,6 +269,8 @@ class Path(Element):
 	
 	
 	def _render(self, transform, inheriteds, context):
+		if not self.active:
+			return
 		du2 = _du2(transform)
 		origin = self.x, self.y
 		
