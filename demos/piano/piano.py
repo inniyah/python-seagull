@@ -8,6 +8,7 @@ import time
 import random
 import pyglet
 import fluidsynth
+import midi
 from threading import Thread
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
@@ -54,7 +55,7 @@ if fast:
     OpenGL.ERROR_ON_COPY = True
     OpenGL.STORE_POINTERS = False
 
-class MidiSoundPlayer():
+class RandomSoundPlayer():
     def __init__(self, keyboard_handler=None):
         self.keyboard_handler = keyboard_handler
         self.fs = fluidsynth.Synth()
@@ -97,6 +98,23 @@ class MidiSoundPlayer():
             duration = self.random_duration(mean_duration)
             self.press(key, velocity, duration)
         #if self.keyboard_handler: self.keyboard_handler.show(False)
+
+class MidiSoundPlayer():
+    def __init__(self, filename, keyboard_handler=None):
+        self.keyboard_handler = keyboard_handler
+        self.fs = fluidsynth.Synth()
+        self.fs.start(driver="alsa")
+        print("FluidSynth Started")
+        self.sfid = self.fs.sfload("/usr/share/sounds/sf2/FluidR3_GM.sf2")
+        self.fs.program_select(0, self.sfid, 0, 0)
+        self.midi = midi.MidiFile()
+        self.midi.open(filename)
+        self.midi.read()
+        self.midi.close()
+    def __del__(self): # See:https://eli.thegreenplace.net/2009/06/12/safely-using-destructors-in-python/
+        self.fs.delete()
+        print("FluidSynth Closed")
+        del self.fs
 
 def adj_color(red, green, blue, factor):
     return (int(red*factor), int(green*factor), int(blue*factor))
@@ -170,9 +188,11 @@ window_size = int(piano.width + 2 * margin), int(piano.height + 2 * margin)
 
 feedback = sg.Group(fill=None, stroke=sg.Color.red)
 
-midi_player = MidiSoundPlayer(piano)
+midi_player = RandomSoundPlayer(piano)
 midi_thread = Thread(target = midi_player.random_play, args = (8, 10, 0.3))
 midi_thread.start()
+
+midi_file_player = MidiSoundPlayer(os.path.join(this_dir, 'Bach_Fugue_BWV578.mid'), piano)
 
 #piano.press(3)
 
