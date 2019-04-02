@@ -96,6 +96,7 @@ class MidiSoundPlayer():
             velocity = self.random_velocity()
             duration = self.random_duration(mean_duration)
             self.press(key, velocity, duration)
+        #if self.keyboard_handler: self.keyboard_handler.show(False)
 
 def adj_color(red, green, blue, factor):
     return (int(red*factor), int(green*factor), int(blue*factor))
@@ -160,6 +161,8 @@ class MusicKeyboard():
     def press(self, num_key, action=True):
         num_octave = num_key // 12
         piano.octaves[num_octave].press(MusicKeybOctave.NOTES[num_key % 12], action)
+    def show(self, active=True):
+        self.model_root.active = active
 
 piano = MusicKeyboard()
 scene = piano.root()
