@@ -202,6 +202,8 @@ class FifoList():
 class CircleOfFifths():
     NOTES = ['C', 'G', 'D', 'A', 'E', 'Cb', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F']
     COLORS = [sg.Color(*adj_color(r, g, b)) for (r, g, b) in COLORS_RGB]
+    MEM_COLOR = sg.Color(169, 169, 169)
+    MEM_THRESHOLD = 10.0 # In floating-point seconds
 
     def __init__(self, x_pos=0, y_pos=0):
         with open(os.path.join(this_dir, "CircleOfFifths.svg")) as f:
@@ -219,23 +221,66 @@ class CircleOfFifths():
             self.model_root,
             transform=[sg.Translate(margin - x_min + x_pos, margin - y_min + y_pos)]
         )
+
+        self.press_counter = [0] * 12
+        self.memory_counter = [0] * 12
+
+        self.last_notes = FifoList()
+
         self.orig_fill_color = {}
         for note in self.NOTES:
             label = 'inner_' + note
             self.orig_fill_color[label] = self.model_elements[label].fill
             label = 'outer_' + note
             self.orig_fill_color[label] = self.model_elements[label].fill
+
     def root(self):
         return self.model_root
+
     def size(self):
         (x_min, y_min), (x_max, y_max) = self.model_root.aabbox()
         return (x_max - x_min), (y_max - y_min)
+
+    def update(self):
+        current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
+        threshold_timestamp = current_timestamp - self.MEM_THRESHOLD
+        data = self.last_notes.peek()
+        while data is not None:
+            timestamp, action, num_key, num_octave, num_note, note, channel = data
+            inner_label = 'inner_' + note
+            outer_label = 'outer_' + note
+
+            data = None
+            if timestamp < threshold_timestamp:
+                self.last_notes.pop()
+                print("%s" % ((action, num_key, num_octave, num_note, note, channel),))
+                if not action:
+                    self.memory_counter[num_note] -= 1
+
+                if self.press_counter[num_note] > 0 or self.memory_counter[num_note] > 0:
+                    self.model_elements[inner_label].fill = self.MEM_COLOR
+                else:
+                    self.model_elements[inner_label].fill = self.orig_fill_color[inner_label]
+
     def press(self, num_key, channel, action=True):
+        current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
+
         num_octave = num_key // 12
-        note = self.NOTES[(num_key*7)%12 % 12]
+        num_note = (num_key*7)%12 % 12
+        note = self.NOTES[num_note]
         inner_label = 'inner_' + note
         outer_label = 'outer_' + note
+
+        self.last_notes.append((current_timestamp, action, num_key, num_octave, num_note, note, channel))
+
         if action:
+            self.press_counter[num_note] += 1
+            self.memory_counter[num_note] += 1
+            self.model_elements[inner_label].fill = self.MEM_COLOR
+        else:
+            self.press_counter[num_note] -= 1
+
+        if self.press_counter[num_note] > 0:
             self.model_elements[outer_label].fill = self.COLORS[channel]
         else:
             self.model_elements[outer_label].fill = self.orig_fill_color[outer_label]
@@ -367,7 +412,7 @@ def on_mouse_drag(x, y, dx, dy, buttons, modifiers):
     mouse_move(x, window.height-y, True)
 
 def update(dt, window=None):
-    pass
+    fifths.update()
 
 pyglet.clock.schedule_interval(update, 1/60, window)
 
