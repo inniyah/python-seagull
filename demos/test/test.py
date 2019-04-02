@@ -10,7 +10,7 @@ import os
 import sys
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(os.path.join(this_dir, '..'))
+sys.path.append(os.path.join(this_dir, '..', '..'))
 
 import atexit
 import glob
@@ -26,7 +26,7 @@ from seagull.opengl.utils import gl_prepare, gl_reshape, gl_display
 
 # scene ######################################################################
 
-DEFAULT_PATH = os.path.join(os.path.dirname(__file__), "..", "contribs", "W3C_SVG_11_TestSuite", "svg")
+DEFAULT_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "contribs", "W3C_SVG_11_TestSuite", "svg")
 
 def args(name, prefix="", path=DEFAULT_PATH):
 	return name, prefix, path
@@ -40,9 +40,9 @@ os.chdir(test_path)
 atexit.register(os.chdir, old_cwd)
 
 SKIP_LIST = [
-	"animate-", "filters-", "fonts-", "interact-", "linking-", "script-",
-	"dom-",
+	"animate-", "filters-", "fonts-", "interact-", "linking-", "script-", "dom-",
 ]
+
 filenames = list(sorted(
 	f for f in glob.glob("%s*.svg*" % prefix)
 	if not any(skip in f for skip in SKIP_LIST)
@@ -102,7 +102,7 @@ def screen_shot(name="screen_shot.%03i.png"):
 	data = glReadPixels(x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE)
 	glReadBuffer(read_buffer)
 	
-	import png
+	from demos.common import png
 	global _shot
 	png.write(open(name % _shot, "wb"), width, height, 3, data)
 	_shot += 1

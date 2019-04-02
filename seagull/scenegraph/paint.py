@@ -531,6 +531,7 @@ class _Gradient(_PaintServer):
 		if spreadMethod != None: self.spreadMethod = spreadMethod
 		if gradientUnits != None: self.gradientUnits = gradientUnits
 		if gradientTransform != None: self.gradientTransform = gradientTransform
+		self.active = True
 	
 	@property
 	def units(self):
@@ -544,10 +545,11 @@ class _Gradient(_PaintServer):
 		raise NotImplementedError
 	
 	def _use_program(self, **kwargs):
-		n = len(self.stops)
+		stops = self.stops if self.active else [(0., Color.none)]
+		n = len(stops)
 		assert n <= MAX_STOPS, "too much stops in gradient"
 		
-		os, colors = zip(*(_stop(*stop) for stop in self.stops))
+		os, colors = zip(*(_stop(*stop) for stop in stops))
 		spread = _SPREADS[self.spreadMethod]
 		self._use_gradient(n, os, colors, spread, **kwargs)
 

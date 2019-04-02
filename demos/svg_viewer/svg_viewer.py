@@ -7,7 +7,7 @@ import os
 import sys
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(os.path.join(this_dir, '..'))
+sys.path.append(os.path.join(this_dir, '..', '..'))
 
 # handling args ##############################################################
 
@@ -171,7 +171,7 @@ def screen_shot(name="screen_shot.%03i.png"):
 	x, y, width, height = glGetIntegerv(GL_VIEWPORT)
 	data = glReadPixels(x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE)
 	
-	import png
+	from demos.common import png
 	global _shot
 	png.write(open(name % _shot, "wb"), width, height, 3, data)
 	_shot += 1
