@@ -8,6 +8,7 @@ import time
 import random
 import pyglet
 import fluidsynth
+import rtmidi
 import midi
 from threading import Thread
 
@@ -103,7 +104,7 @@ class RandomSoundPlayer():
             self.press(key, velocity, duration)
         #if self.keyboard_handler: self.keyboard_handler.show(False)
 
-class MidiSoundPlayer():
+class MidiFileSoundPlayer():
     def __init__(self, filename, keyboard_handler=None):
         self.keyboard_handler = keyboard_handler
         self.fs = fluidsynth.Synth()
@@ -120,6 +121,57 @@ class MidiSoundPlayer():
         print("FluidSynth Closed")
         del self.fs
 
+class RtMidiSoundPlayer():
+    def __init__(self, keyboard_handlers=None):
+        self.keyboard_handlers = keyboard_handlers
+        self.fs = fluidsynth.Synth()
+        self.fs.start(driver="alsa")
+        print("FluidSynth Started")
+        self.sfid = self.fs.sfload("/usr/share/sounds/sf2/FluidR3_GM.sf2")
+        self.fs.program_select(0, self.sfid, 0, 0)
+
+        self.midi_in = rtmidi.MidiIn()
+        available_ports = self.midi_in.get_ports()
+        if available_ports:
+            midi_port_num = 1
+            self.midi_in_port = self.midi_in.open_port(midi_port_num)
+            print("Using MIDI Interface {}: '{}'".format(midi_port_num, available_ports[midi_port_num]))
+        else:
+            print("Creating virtual MIDI input.")
+            self.midi_in_port = self.midi_in.open_virtual_port("midi_driving_in")
+
+        self.midi_in.set_callback(self.midi_received)
+
+    def __del__(self): # See:https://eli.thegreenplace.net/2009/06/12/safely-using-destructors-in-python/
+        self.fs.delete()
+        print("FluidSynth Closed")
+        del self.fs
+
+    def midi_received(self, midi_event, data=None):
+        current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
+        midi_msg, delta_time = midi_event
+        if len(midi_msg) > 2:
+            pressed = (midi_msg[2] != 0)
+            note = midi_msg[1]
+            pitch_class = midi_msg[1] % 12
+            octave = midi_msg[1] // 12
+
+            print("%s" % ((pressed, note, octave, pitch_class),))
+
+            if pressed: # A note was hit
+                if self.keyboard_handlers:
+                    for keyboard_handler in self.keyboard_handlers:
+                        keyboard_handler.press(midi_msg[1], 1, True)
+
+            else: # A note was released
+                if self.keyboard_handlers:
+                    for keyboard_handler in self.keyboard_handlers:
+                        keyboard_handler.press(midi_msg[1], 1, False)
+
+
+
+
+
 def adj_color(red, green, blue, factor=1.0):
     return (int(red*factor), int(green*factor), int(blue*factor))
 
@@ -130,6 +182,22 @@ COLORS_RGB = [
     (70, 153, 144),  (230, 190, 255), (154, 99, 36),   (255, 250, 200), (128, 0, 0),
     (170, 255, 195), (128, 128, 0),   (255, 216, 177), (0, 0, 117),     (169, 169, 169),
 ]
+
+class FifoList():
+    def __init__(self):
+        self.data = {}
+        self.nextin = 0
+        self.nextout = 0
+    def append(self, data):
+        self.nextin += 1
+        self.data[self.nextin] = data
+    def pop(self):
+        self.nextout += 1
+        result = self.data[self.nextout]
+        del self.data[self.nextout]
+        return result
+    def peek(self):
+        return self.data[self.nextout + 1] if self.data else None
 
 class CircleOfFifths():
     NOTES = ['C', 'G', 'D', 'A', 'E', 'Cb', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F']
@@ -164,7 +232,7 @@ class CircleOfFifths():
         return (x_max - x_min), (y_max - y_min)
     def press(self, num_key, channel, action=True):
         num_octave = num_key // 12
-        note = self.NOTES[num_key % 12]
+        note = self.NOTES[(num_key*7)%12 % 12]
         inner_label = 'inner_' + note
         outer_label = 'outer_' + note
         if action:
@@ -235,13 +303,13 @@ window_size = int(piano.width + margin + fifths.width + 2 * margin), int(piano.h
 
 feedback = sg.Group(fill=None, stroke=sg.Color.red)
 
-midi_player = RandomSoundPlayer([piano, fifths])
-midi_thread = Thread(target = midi_player.random_play, args = (8, 10, 0.3))
-midi_thread.start()
+#midi_player = RandomSoundPlayer([piano, fifths])
+#midi_thread = Thread(target = midi_player.random_play, args = (8, 10, 0.3))
+#midi_thread.start()
 
-midi_file_player = MidiSoundPlayer(os.path.join(this_dir, 'Bach_Fugue_BWV578.mid'), piano)
+#midi_file_player = MidiFileSoundPlayer(os.path.join(this_dir, 'Bach_Fugue_BWV578.mid'), piano)
 
-#piano.press(3)
+midi_input = RtMidiSoundPlayer([piano, fifths])
 
 width, height = window_size
 window = pyglet.window.Window(
@@ -305,5 +373,5 @@ pyglet.clock.schedule_interval(update, 1/60, window)
 
 pyglet.app.run()
 
-midi_thread.join()
-print("All threads finished")
+#midi_thread.join()
+#print("All threads finished")
