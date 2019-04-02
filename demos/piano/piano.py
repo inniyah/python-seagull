@@ -56,8 +56,8 @@ if fast:
     OpenGL.STORE_POINTERS = False
 
 class RandomSoundPlayer():
-    def __init__(self, keyboard_handler=None):
-        self.keyboard_handler = keyboard_handler
+    def __init__(self, keyboard_handlers=None):
+        self.keyboard_handlers = keyboard_handlers
         self.fs = fluidsynth.Synth()
         self.fs.start(driver="alsa")
         print("FluidSynth Started")
@@ -69,10 +69,14 @@ class RandomSoundPlayer():
         del self.fs
     def press(self, key, velocity=64, duration=0.5):
         self.fs.noteon(0, key + 19, velocity)
-        if self.keyboard_handler: self.keyboard_handler.press(key + 19, True)
+        if self.keyboard_handlers:
+            for keyboard_handler in self.keyboard_handlers:
+                keyboard_handler.press(key + 19, 1, True)
         time.sleep(duration)
         self.fs.noteoff(0, key + 19)
-        if self.keyboard_handler: self.keyboard_handler.press(key + 19, False)
+        if self.keyboard_handlers:
+            for keyboard_handler in self.keyboard_handlers:
+                keyboard_handler.press(key + 19, 1, False)
     @staticmethod
     def random_key(mean_key=44):
         x = random.gauss(mean_key, 10.0)
@@ -116,23 +120,64 @@ class MidiSoundPlayer():
         print("FluidSynth Closed")
         del self.fs
 
-def adj_color(red, green, blue, factor):
+def adj_color(red, green, blue, factor=1.0):
     return (int(red*factor), int(green*factor), int(blue*factor))
+
+# See: https://sashat.me/2017/01/11/list-of-20-simple-distinct-colors/
+COLORS_RGB = [
+    (230, 25, 75),   (60, 180, 75),   (255, 225, 25),  (67, 99, 216),   (245, 130, 49),
+    (145, 30, 180),  (66, 212, 244),  (240, 50, 230),  (191, 239, 69),  (250, 190, 190),
+    (70, 153, 144),  (230, 190, 255), (154, 99, 36),   (255, 250, 200), (128, 0, 0),
+    (170, 255, 195), (128, 128, 0),   (255, 216, 177), (0, 0, 117),     (169, 169, 169),
+]
+
+class CircleOfFifths():
+    NOTES = ['C', 'G', 'D', 'A', 'E', 'Cb', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F']
+    COLORS = [sg.Color(*adj_color(r, g, b)) for (r, g, b) in COLORS_RGB]
+
+    def __init__(self, x_pos=0, y_pos=0):
+        with open(os.path.join(this_dir, "CircleOfFifths.svg")) as f:
+            svg = f.read()
+        self.model_root, self.model_elements = parse(svg)
+        #sys.stdout.write(serialize(self.model_root))
+        #sys.stdout.write("elements = %s\n" % (self.model_elements,))
+        json.dump(self.model_root, sys.stdout, cls=JSONDebugEncoder, indent=2, sort_keys=True)
+        #json.dump(self.model_elements, sys.stdout, cls=JSONDebugEncoder, indent=2, sort_keys=True)
+        #sys.stdout.write("\n") # Python JSON dump misses last newline
+        (x_min, y_min), (x_max, y_max) = self.model_root.aabbox()
+        self.width = x_max - x_min
+        self.height = y_max - y_min
+        self.model_root = sg.Use(
+            self.model_root,
+            transform=[sg.Translate(margin - x_min + x_pos, margin - y_min + y_pos)]
+        )
+        self.orig_fill_color = {}
+        for note in self.NOTES:
+            label = 'inner_' + note
+            self.orig_fill_color[label] = self.model_elements[label].fill
+            label = 'outer_' + note
+            self.orig_fill_color[label] = self.model_elements[label].fill
+    def root(self):
+        return self.model_root
+    def size(self):
+        (x_min, y_min), (x_max, y_max) = self.model_root.aabbox()
+        return (x_max - x_min), (y_max - y_min)
+    def press(self, num_key, channel, action=True):
+        num_octave = num_key // 12
+        note = self.NOTES[num_key % 12]
+        inner_label = 'inner_' + note
+        outer_label = 'outer_' + note
+        if action:
+            self.model_elements[outer_label].fill = self.COLORS[channel]
+        else:
+            self.model_elements[outer_label].fill = self.orig_fill_color[outer_label]
 
 class MusicKeybOctave():
     NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
-    # See: https://sashat.me/2017/01/11/list-of-20-simple-distinct-colors/
-    COLORS_RGB = [
-        (230, 25, 75),   (60, 180, 75),   (255, 225, 25),  (67, 99, 216),   (245, 130, 49),
-        (145, 30, 180),  (66, 212, 244),  (240, 50, 230),  (191, 239, 69),  (250, 190, 190),
-        (70, 153, 144),  (230, 190, 255), (154, 99, 36),   (255, 250, 200), (128, 0, 0),
-        (170, 255, 195), (128, 128, 0),   (255, 216, 177), (0, 0, 117),     (169, 169, 169),
-    ]
-
     COLORS = [
-        [sg.Color(*adj_color(r, g, b, 1.25)) for (r, g, b) in COLORS_RGB], # White keys
-        [sg.Color(*adj_color(r, g, b, 1.0/1.25)) for (r, g, b) in COLORS_RGB], # Black keys
+        [sg.Color(*adj_color(r, g, b, factor=1.25)) for (r, g, b) in COLORS_RGB], # White keys
+        [sg.Color(*adj_color(r, g, b, factor=1.0/1.25)) for (r, g, b) in COLORS_RGB], # Black keys
     ]
 
     def __init__(self):
@@ -152,9 +197,9 @@ class MusicKeybOctave():
     def size(self):
         (x_min, y_min), (x_max, y_max) = self.model_root.aabbox()
         return (x_max - x_min), (y_max - y_min)
-    def press(self, key, action=True):
+    def press(self, key, channel, action=True):
         if action:
-            self.model_elements[key].fill = self.COLORS[0 if len(key) == 1 else 1][10]
+            self.model_elements[key].fill = self.COLORS[0 if len(key) == 1 else 1][channel]
         else:
             self.model_elements[key].fill = self.orig_fill_color[key]
 
@@ -176,19 +221,21 @@ class MusicKeyboard():
         self.model_root = sg.Group(self.elements)
     def root(self):
         return self.model_root
-    def press(self, num_key, action=True):
+    def press(self, num_key, channel, action=True):
         num_octave = num_key // 12
-        piano.octaves[num_octave].press(MusicKeybOctave.NOTES[num_key % 12], action)
+        piano.octaves[num_octave].press(MusicKeybOctave.NOTES[num_key % 12], channel, action)
     def show(self, active=True):
         self.model_root.active = active
 
 piano = MusicKeyboard()
-scene = piano.root()
-window_size = int(piano.width + 2 * margin), int(piano.height + 2 * margin)
+fifths = CircleOfFifths(piano.width + margin)
+scene = sg.Group([piano.root(), fifths.root()])
+
+window_size = int(piano.width + margin + fifths.width + 2 * margin), int(piano.height + 2 * margin)
 
 feedback = sg.Group(fill=None, stroke=sg.Color.red)
 
-midi_player = RandomSoundPlayer(piano)
+midi_player = RandomSoundPlayer([piano, fifths])
 midi_thread = Thread(target = midi_player.random_play, args = (8, 10, 0.3))
 midi_thread.start()
 
@@ -216,8 +263,6 @@ def on_draw():
 def keyboard(c):
     if c == 'q':
         sys.exit(0)
-    elif c == 's':
-        sys.stdout.write(serialize(scene))
 
 LEFT, MIDDLE, RIGHT = range(3)
 
