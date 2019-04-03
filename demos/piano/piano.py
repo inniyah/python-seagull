@@ -3,6 +3,7 @@
 
 import os
 import sys
+import math
 import json
 import time
 import random
@@ -186,12 +187,12 @@ class RtMidiSoundPlayer():
             if pressed: # A note was hit
                 if self.keyboard_handlers:
                     for keyboard_handler in self.keyboard_handlers:
-                        keyboard_handler.press(midi_msg[1], 1, True)
+                        keyboard_handler.press(midi_msg[1], 16, True)
 
             else: # A note was released
                 if self.keyboard_handlers:
                     for keyboard_handler in self.keyboard_handlers:
-                        keyboard_handler.press(midi_msg[1], 1, False)
+                        keyboard_handler.press(midi_msg[1], 16, False)
 
 
 
@@ -228,8 +229,21 @@ class CircleOfFifths():
     NOTES = ['C', 'G', 'D', 'A', 'E', 'Cb', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F']
     COLORS = [sg.Color(*adj_color(r, g, b)) for (r, g, b) in COLORS_RGB]
     MEM_COLOR = sg.Color(169, 169, 169)
-    MEM_COLORS = [ sg.Color(int(169.*i/10.) , int(169.*i/10.), int(169.*i/10.)) for i in range(0,10)]
+    MEM_COLORS = [ sg.Color(int(169.*(10-i)/10.) , int(169.*(10-i)/10.), int(169.*(10-i)/10.)) for i in range(0,11)]
     MEM_THRESHOLD = 10.0 # In floating-point seconds
+
+    # Forgetting factor: f(t) = 1.0 / (K ** ( t / T ))
+    # Integral of f(t): F(t) = C - T / (logn(K) * K ** ( t / T ))
+    # If F(t) == 0: C = T0 / logn(K)
+    MEM_T = 1.0 # In T floating-point seconds
+    MEM_K = 3.0 # The value will be divided by K
+    MEM_C = MEM_T / math.log(MEM_K) # As calculated above
+
+    def mem_f(self, t): # when t -> inf, mem_f -> 0
+        return 1.0 / (self.MEM_K ** (t / self.MEM_T))
+
+    def mem_F(self, t): # when t -> inf, mem_F -> MEM_C
+        return self.MEM_C - self.MEM_T / (math.log(self.MEM_K) * (self.MEM_K ** (t / self.MEM_T)))
 
     def __init__(self, x_pos=0, y_pos=0):
         with open(os.path.join(this_dir, "CircleOfFifths.svg")) as f:
@@ -250,13 +264,12 @@ class CircleOfFifths():
 
         self.press_counter = [0] * 12
         self.memory_counter = [0] * 12
-
-        self.last_timestamp_present = self.last_timestamp_past = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
-        self.time_counter_present = [0] * 12
-        self.total_time_counter_present = 0
         self.press_counter_past = [0] * 12
+        self.accum_time = [0.] * 12
 
         self.last_notes = FifoList()
+
+        self.last_timestamp_present = self.last_timestamp_past = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
 
         self.orig_fill_color = {}
         for note in self.NOTES:
@@ -276,10 +289,17 @@ class CircleOfFifths():
         for num_note in range(0, 12):
             note = self.NOTES[num_note]
             inner_label = 'inner_' + note
+
             if self.press_counter[num_note] > 0 or self.memory_counter[num_note] > 0:
-                self.model_elements[inner_label].fill = self.MEM_COLOR
+                i = int(len(self.MEM_COLORS) * self.accum_time[num_note] / self.MEM_C)
+                self.model_elements[inner_label].fill = self.MEM_COLORS[i]
             else:
                 self.model_elements[inner_label].fill = self.orig_fill_color[inner_label]
+
+            #if self.press_counter_past[num_note] > 0:
+            #    self.model_elements[inner_label].fill = self.MEM_COLOR
+            #else:
+            #    self.model_elements[inner_label].fill = self.orig_fill_color[inner_label]
 
     def update(self):
         current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
@@ -297,7 +317,11 @@ class CircleOfFifths():
                 self.last_notes.pop()
                 #print("%s" % ((action, num_key, num_octave, num_note, note, channel),))
 
-                if not action:
+
+                if action:
+                    self.press_counter_past[num_note] += 1
+                else:
+                    self.press_counter_past[num_note] -= 1
                     self.memory_counter[num_note] -= 1
 
                 if self.press_counter[num_note] > 0 or self.memory_counter[num_note] > 0:
@@ -312,10 +336,12 @@ class CircleOfFifths():
         current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
         delta_timestamp = current_timestamp - self.last_timestamp_present
 
-        self.total_time_counter_present += delta_timestamp
         for num_note in range(0, 12):
+            self.accum_time[num_note] = self.accum_time[num_note] * self.mem_f(delta_timestamp) # Move current value into the past
+            # Update accumulated time with previous value of press_counter, before updating it
             if self.press_counter[num_note] > 0:
-                self.time_counter_present[num_note] += delta_timestamp
+                 self.accum_time[num_note] += self.mem_F(delta_timestamp) # Add more, if key pressed
+        print("%s" % (self.accum_time,))
 
         num_octave = num_key // 12
         num_note = (num_key*7)%12 % 12
@@ -417,7 +443,7 @@ midi_file_player = MidiFileSoundPlayer(os.path.join(this_dir, 'Bach_Fugue_BWV578
 midi_thread = Thread(target = midi_file_player.play)
 midi_thread.start()
 
-#midi_input = RtMidiSoundPlayer([piano, fifths])
+midi_input = RtMidiSoundPlayer([piano, fifths])
 
 width, height = window_size
 window = pyglet.window.Window(
