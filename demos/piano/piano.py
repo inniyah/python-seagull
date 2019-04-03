@@ -278,7 +278,7 @@ class CircleOfFifths():
             data = None
             if timestamp < threshold_timestamp:
                 self.last_notes.pop()
-                print("%s" % ((action, num_key, num_octave, num_note, note, channel),))
+                #print("%s" % ((action, num_key, num_octave, num_note, note, channel),))
                 if not action:
                     self.memory_counter[num_note] -= 1
 
@@ -324,7 +324,7 @@ class MusicKeybOctave():
         self.model_root, self.model_elements = parse(svg)
         #sys.stdout.write(serialize(self.model_root))
         #sys.stdout.write("elements = %s\n" % (self.model_elements,))
-        json.dump(self.model_root, sys.stdout, cls=JSONDebugEncoder, indent=2, sort_keys=True)
+        #json.dump(self.model_root, sys.stdout, cls=JSONDebugEncoder, indent=2, sort_keys=True)
         #json.dump(self.model_elements, sys.stdout, cls=JSONDebugEncoder, indent=2, sort_keys=True)
         #sys.stdout.write("\n") # Python JSON dump misses last newline
         self.orig_fill_color = {}
@@ -335,11 +335,10 @@ class MusicKeybOctave():
     def size(self):
         (x_min, y_min), (x_max, y_max) = self.model_root.aabbox()
         return (x_max - x_min), (y_max - y_min)
-    def press(self, key, channel, action=True):
-        if action:
-            self.model_elements[key].fill = self.COLORS[0 if len(key) == 1 else 1][channel]
-        else:
-            self.model_elements[key].fill = self.orig_fill_color[key]
+    def press(self, key, channel):
+        self.model_elements[key].fill = self.COLORS[0 if len(key) == 1 else 1][channel]
+    def release(self, key):
+        self.model_elements[key].fill = self.orig_fill_color[key]
 
 class MusicKeyboard():
     def __init__(self, num_octaves=10):
@@ -347,6 +346,7 @@ class MusicKeyboard():
         self.elements = []
         self.width = 0
         self.height = 0
+        self.keys_pressed = [0] * (12 * num_octaves)
         for octave in self.octaves:
             (x_min, y_min), (x_max, y_max) = octave.root().aabbox()
             element = sg.Use(
@@ -361,7 +361,14 @@ class MusicKeyboard():
         return self.model_root
     def press(self, num_key, channel, action=True):
         num_octave = num_key // 12
-        piano.octaves[num_octave].press(MusicKeybOctave.NOTES[num_key % 12], channel, action)
+        if action:
+            self.keys_pressed[num_key] |= (1<<channel)
+            if self.keys_pressed[num_key]:
+                piano.octaves[num_octave].press(MusicKeybOctave.NOTES[num_key % 12], channel)
+        else:
+            self.keys_pressed[num_key] &= ~(1<<channel)
+            if not self.keys_pressed[num_key]:
+                piano.octaves[num_octave].release(MusicKeybOctave.NOTES[num_key % 12])
     def show(self, active=True):
         self.model_root.active = active
 
