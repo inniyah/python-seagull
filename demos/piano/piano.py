@@ -360,6 +360,24 @@ class CircleOfFifths():
 
         self.adj_memory()
 
+class HexLayout():
+    def __init__(self, x_pos=0, y_pos=0):
+        with open(os.path.join(this_dir, "HexLayout.svg")) as f:
+            svg = f.read()
+        self.model_root, self.model_elements = parse(svg)
+        (x_min, y_min), (x_max, y_max) = self.model_root.aabbox()
+        self.width = x_max - x_min
+        self.height = y_max - y_min
+        self.model_root = sg.Use(
+            self.model_root,
+            transform=[sg.Translate(margin - x_min + x_pos, margin - y_min + y_pos)]
+        )
+    def root(self):
+        return self.model_root
+    def size(self):
+        (x_min, y_min), (x_max, y_max) = self.model_root.aabbox()
+        return (x_max - x_min), (y_max - y_min)
+
 class MusicKeybOctave():
     NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
@@ -424,9 +442,10 @@ class MusicKeyboard():
 
 piano = MusicKeyboard()
 fifths = CircleOfFifths(piano.width + margin)
-scene = sg.Group([piano.root(), fifths.root()])
+hexagonal = HexLayout(0, piano.height + margin)
+scene = sg.Group([piano.root(), fifths.root(), hexagonal.root()])
 
-window_size = int(piano.width + margin + fifths.width + 2 * margin), int(piano.height + 2 * margin)
+window_size = int(piano.width + margin + fifths.width + 2 * margin), int(piano.height + margin + hexagonal.height + 2 * margin)
 
 feedback = sg.Group(fill=None, stroke=sg.Color.red)
 
