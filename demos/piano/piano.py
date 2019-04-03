@@ -124,8 +124,8 @@ class MidiFileSoundPlayer():
 
     def play(self):
         for message in self.midi_file.play(meta_messages=True):
-            sys.stdout.write(repr(message) + '\n')
-            sys.stdout.flush()
+            #sys.stdout.write(repr(message) + '\n')
+            #sys.stdout.flush()
             if isinstance(message, mido.Message):
                 if message.type == 'note_on':
                     self.fs.noteon(message.channel, message.note, message.velocity)
@@ -140,7 +140,8 @@ class MidiFileSoundPlayer():
                             keyboard_handler.press(message.note, message.channel, False)
 
             elif message.type == 'set_tempo':
-                print('Tempo changed to {:.1f} BPM.'.format(mido.tempo2bpm(message.tempo)))
+                #print('Tempo changed to {:.1f} BPM.'.format(mido.tempo2bpm(message.tempo)))
+                pass
 
     def __del__(self): # See:https://eli.thegreenplace.net/2009/06/12/safely-using-destructors-in-python/
         self.fs.delete()
@@ -182,7 +183,7 @@ class RtMidiSoundPlayer():
             pitch_class = midi_msg[1] % 12
             octave = midi_msg[1] // 12
 
-            print("%s" % ((pressed, note, octave, pitch_class),))
+            #print("%s" % ((pressed, note, octave, pitch_class),))
 
             if pressed: # A note was hit
                 if self.keyboard_handlers:
@@ -228,8 +229,7 @@ class FifoList():
 class CircleOfFifths():
     NOTES = ['C', 'G', 'D', 'A', 'E', 'Cb', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F']
     COLORS = [sg.Color(*adj_color(r, g, b)) for (r, g, b) in COLORS_RGB]
-    MEM_COLOR = sg.Color(169, 169, 169)
-    MEM_COLORS = [ sg.Color(int(169.*(10-i)/10.) , int(169.*(10-i)/10.), int(169.*(10-i)/10.)) for i in range(0,11)]
+    MEM_COLORS = [ sg.Color(int(210.*(20-i)/20.) , int(230.*(20-i)/20.), int(250.*(20-i)/20.)) for i in range(0,21)]
     MEM_THRESHOLD = 10.0 # In floating-point seconds
 
     # Forgetting factor: f(t) = 1.0 / (K ** ( t / T ))
@@ -271,7 +271,7 @@ class CircleOfFifths():
 
         self.last_notes = FifoList()
 
-        self.last_timestamp_present = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
+        self.last_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
 
         self.orig_fill_color = {}
         for note in self.NOTES:
@@ -288,6 +288,16 @@ class CircleOfFifths():
         return (x_max - x_min), (y_max - y_min)
 
     def adj_memory(self):
+        current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
+        delta_timestamp = current_timestamp - self.last_timestamp
+        for num_note in range(0, 12):
+            self.accum_time[num_note] = self.accum_time[num_note] * self.mem_f(delta_timestamp) # Move current value into the past
+            # Update accumulated time with previous value of press_counter, before updating it
+            if self.press_counter[num_note] > 0:
+                 self.accum_time[num_note] += self.mem_F(delta_timestamp) # Add more, if key pressed
+        self.last_timestamp = current_timestamp
+        #print("%s" % (self.accum_time,))
+
         for num_note in range(0, 12):
             note = self.NOTES[num_note]
             inner_label = 'inner_' + note
@@ -298,14 +308,8 @@ class CircleOfFifths():
             else:
                 self.model_elements[inner_label].fill = self.orig_fill_color[inner_label]
 
-            #if self.press_counter_past[num_note] > 0:
-            #    self.model_elements[inner_label].fill = self.MEM_COLOR
-            #else:
-            #    self.model_elements[inner_label].fill = self.orig_fill_color[inner_label]
-
     def update(self):
         current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
-        #delta_timestamp = current_timestamp - self.last_timestamp_past
         threshold_timestamp = current_timestamp - self.MEM_THRESHOLD
 
         data = self.last_notes.peek()
@@ -325,32 +329,15 @@ class CircleOfFifths():
                     self.press_counter_past[num_note] -= 1
                     self.memory_counter[num_note] -= 1
 
-                if self.press_counter[num_note] > 0 or self.memory_counter[num_note] > 0:
-                    self.model_elements[inner_label].fill = self.MEM_COLOR
-                else:
-                    self.model_elements[inner_label].fill = self.orig_fill_color[inner_label]
+                #if self.press_counter[num_note] > 0 or self.memory_counter[num_note] > 0:
+                #    self.model_elements[inner_label].fill = self.MEM_COLOR
+                #else:
+                #    self.model_elements[inner_label].fill = self.orig_fill_color[inner_label]
 
-        self.lock.acquire()
-        try:
-            self.adj_memory()
-            #self.last_timestamp_past = current_timestamp
-        finally:
-            self.lock.release()
+        self.adj_memory()
 
     def press(self, num_key, channel, action=True):
         current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
-        delta_timestamp = current_timestamp - self.last_timestamp_present
-
-        self.lock.acquire()
-        try:
-            for num_note in range(0, 12):
-                self.accum_time[num_note] = self.accum_time[num_note] * self.mem_f(delta_timestamp) # Move current value into the past
-                # Update accumulated time with previous value of press_counter, before updating it
-                if self.press_counter[num_note] > 0:
-                     self.accum_time[num_note] += self.mem_F(delta_timestamp) # Add more, if key pressed
-            print("%s" % (self.accum_time,))
-        finally:
-            self.lock.release()
 
         num_octave = num_key // 12
         num_note = (num_key*7)%12 % 12
@@ -371,12 +358,7 @@ class CircleOfFifths():
         else:
             self.model_elements[outer_label].fill = self.orig_fill_color[outer_label]
 
-        self.lock.acquire()
-        try:
-            self.adj_memory()
-            self.last_timestamp_present = current_timestamp
-        finally:
-            self.lock.release()
+        self.adj_memory()
 
 class MusicKeybOctave():
     NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
