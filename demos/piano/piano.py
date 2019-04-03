@@ -9,7 +9,7 @@ import random
 import pyglet
 import fluidsynth
 import rtmidi
-import midi
+import mido
 from threading import Thread
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
@@ -105,17 +105,42 @@ class RandomSoundPlayer():
         #if self.keyboard_handler: self.keyboard_handler.show(False)
 
 class MidiFileSoundPlayer():
-    def __init__(self, filename, keyboard_handler=None):
-        self.keyboard_handler = keyboard_handler
+    def __init__(self, filename, keyboard_handlers=None):
+        self.keyboard_handlers = keyboard_handlers
         self.fs = fluidsynth.Synth()
         self.fs.start(driver="alsa")
         print("FluidSynth Started")
         self.sfid = self.fs.sfload("/usr/share/sounds/sf2/FluidR3_GM.sf2")
-        self.fs.program_select(0, self.sfid, 0, 0)
-        self.midi = midi.MidiFile()
-        self.midi.open(filename)
-        self.midi.read()
-        self.midi.close()
+        for channel in range(0, 16):
+            self.fs.program_select(channel, self.sfid, 0, 0)
+        self.midi_file = mido.MidiFile(filename)
+        print('Midi File: {}'.format(self.midi_file.filename))
+        length = self.midi_file.length
+        print('Song length: {} minutes, {} seconds'.format(int(length / 60), int(length % 60)))
+        print('Tracks:')
+        for i, track in enumerate(self.midi_file.tracks):
+            print('  {:2d}: {!r}'.format(i, track.name.strip()))
+
+    def play(self):
+        for message in self.midi_file.play(meta_messages=True):
+            sys.stdout.write(repr(message) + '\n')
+            sys.stdout.flush()
+            if isinstance(message, mido.Message):
+                if message.type == 'note_on':
+                    self.fs.noteon(message.channel, message.note, message.velocity)
+                    if self.keyboard_handlers:
+                        for keyboard_handler in self.keyboard_handlers:
+                            keyboard_handler.press(message.note, message.channel, True)
+
+                elif message.type == 'note_off':
+                    self.fs.noteoff(message.channel, message.note)
+                    if self.keyboard_handlers:
+                        for keyboard_handler in self.keyboard_handlers:
+                            keyboard_handler.press(message.note, message.channel, False)
+
+            elif message.type == 'set_tempo':
+                print('Tempo changed to {:.1f} BPM.'.format(mido.tempo2bpm(message.tempo)))
+
     def __del__(self): # See:https://eli.thegreenplace.net/2009/06/12/safely-using-destructors-in-python/
         self.fs.delete()
         print("FluidSynth Closed")
@@ -352,9 +377,11 @@ feedback = sg.Group(fill=None, stroke=sg.Color.red)
 #midi_thread = Thread(target = midi_player.random_play, args = (8, 10, 0.3))
 #midi_thread.start()
 
-#midi_file_player = MidiFileSoundPlayer(os.path.join(this_dir, 'Bach_Fugue_BWV578.mid'), piano)
+midi_file_player = MidiFileSoundPlayer(os.path.join(this_dir, 'Bach_Fugue_BWV578.mid'), [piano, fifths])
+midi_thread = Thread(target = midi_file_player.play)
+midi_thread.start()
 
-midi_input = RtMidiSoundPlayer([piano, fifths])
+#midi_input = RtMidiSoundPlayer([piano, fifths])
 
 width, height = window_size
 window = pyglet.window.Window(
