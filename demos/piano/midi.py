@@ -169,7 +169,7 @@ class MidiEvent:
         for attrib in ["pitch", "data", "velocity"]:
             if getattr(self, attrib) != None:
                 r = r + ", " + attrib + "=" + repr(getattr(self, attrib))
-        return r + ">"
+        return r + "/>"
 
     def read(self, time, str):
         global runningStatus
@@ -359,10 +359,10 @@ class MidiTrack:
         return b'MTrk' + putNumber(len(str), 4) + str
 
     def __repr__(self):
-        r = "<MidiTrack %d -- %d events\n" % (self.index, len(self.events))
+        r = "<MidiTrack %d: %d events>\n" % (self.index, len(self.events))
         for e in self.events:
-            r = r + "    " + "<" + "\n"
-        return r + "  >"
+            r = r + "    %s\n" % (e,)
+        return r + "  </MidiTrack>"
 
 
 # Track0 Hook to read Track 0 data, similar to register_note function
@@ -395,10 +395,10 @@ class MidiFile:
             self.file = open(filename, attrib)
 
     def __repr__(self):
-        r = "<MidiFile %d tracks\n" % len(self.tracks)
+        r = "<MidiFile: %d tracks>\n" % len(self.tracks)
         for t in self.tracks:
-            r = r + "  " + "t" + "\n"
-        return r + ">"
+            r = r + "  %s\n" % (t,)
+        return r + "</MidiFile>"
 
     def close(self):
         self.file.close()
