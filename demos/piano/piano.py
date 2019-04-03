@@ -227,7 +227,7 @@ class FifoList():
         return self.data[self.nextout + 1] if self.data else None
 
 class CircleOfFifths():
-    NOTES = ['C', 'G', 'D', 'A', 'E', 'Cb', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F']
+    NOTES = ['C', 'G', 'D', 'A', 'E', 'B', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F']
     COLORS = [sg.Color(*adj_color(r, g, b)) for (r, g, b) in COLORS_RGB]
     MEM_COLORS = [ sg.Color(int(210.*(20-i)/20.) , int(230.*(20-i)/20.), int(250.*(20-i)/20.)) for i in range(0,21)]
     MEM_THRESHOLD = 10.0 # In floating-point seconds
@@ -304,7 +304,7 @@ class CircleOfFifths():
 
             if self.press_counter[num_note] > 0 or self.memory_counter[num_note] > 0:
                 i = int(len(self.MEM_COLORS) * self.accum_time[num_note] / self.MEM_C)
-                self.model_elements[inner_label].fill = self.MEM_COLORS[i]
+                self.model_elements[inner_label].fill = self.MEM_COLORS[max(0, min(i, len(self.MEM_COLORS)-1))]
             else:
                 self.model_elements[inner_label].fill = self.orig_fill_color[inner_label]
 
@@ -361,6 +361,9 @@ class CircleOfFifths():
         self.adj_memory()
 
 class HexLayout():
+    IDLE_COLOR = sg.Color(int(200.) , int(200.), int(200.))
+    COLORS = [sg.Color(*adj_color(r, g, b)) for (r, g, b) in COLORS_RGB]
+
     def __init__(self, x_pos=0, y_pos=0):
         with open(os.path.join(this_dir, "HexLayout.svg")) as f:
             svg = f.read()
@@ -372,11 +375,38 @@ class HexLayout():
             self.model_root,
             transform=[sg.Translate(margin - x_min + x_pos, margin - y_min + y_pos)]
         )
+
+        self.press_counter = [0] * 12
+
+        # self.note_map = ['cC',  'cG',  'dD',  'dA',  'dE',  'dB', 'aGb', 'bDb', 'bAb', 'bEb', 'bBb', 'cF'] # C, Am
+        self.note_map =   ['cGb', 'cDb', 'dAb', 'dEb', 'dBb', 'dF', 'aC',  'bG',  'bD',  'bA',  'bE',  'cB']
+
+        self.orig_fill_color = {}
+        for id in self.note_map:
+            self.orig_fill_color[id] = self.model_elements[id].fill
+            self.model_elements[id].fill = self.IDLE_COLOR
+
     def root(self):
         return self.model_root
+
     def size(self):
         (x_min, y_min), (x_max, y_max) = self.model_root.aabbox()
         return (x_max - x_min), (y_max - y_min)
+
+    def press(self, num_key, channel, action=True):
+        num_octave = num_key // 12
+        num_note = (num_key*7)%12 % 12
+        note_id = self.note_map[num_note]
+
+        if action:
+            self.press_counter[num_note] += 1
+        else:
+            self.press_counter[num_note] -= 1
+
+        if self.press_counter[num_note] > 0:
+            self.model_elements[note_id].fill = self.COLORS[channel]
+        else:
+            self.model_elements[note_id].fill = self.IDLE_COLOR
 
 class MusicKeybOctave():
     NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
@@ -449,15 +479,15 @@ window_size = int(piano.width + margin + fifths.width + 2 * margin), int(piano.h
 
 feedback = sg.Group(fill=None, stroke=sg.Color.red)
 
-#midi_player = RandomSoundPlayer([piano, fifths])
+#midi_player = RandomSoundPlayer([piano, fifths, hexagonal])
 #midi_thread = Thread(target = midi_player.random_play, args = (8, 10, 0.3))
 #midi_thread.start()
 
-midi_file_player = MidiFileSoundPlayer(os.path.join(this_dir, 'Bach_Fugue_BWV578.mid'), [piano, fifths])
+midi_file_player = MidiFileSoundPlayer(os.path.join(this_dir, 'Bach_Fugue_BWV578.mid'), [piano, fifths, hexagonal])
 midi_thread = Thread(target = midi_file_player.play)
 midi_thread.start()
 
-midi_input = RtMidiSoundPlayer([piano, fifths])
+midi_input = RtMidiSoundPlayer([piano, fifths, hexagonal])
 
 width, height = window_size
 window = pyglet.window.Window(
