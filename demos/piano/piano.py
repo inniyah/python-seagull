@@ -11,7 +11,7 @@ import pyglet
 import fluidsynth
 import rtmidi
 import mido
-from threading import Thread
+from threading import Thread, Lock
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(this_dir, '..', '..'))
@@ -262,6 +262,8 @@ class CircleOfFifths():
             transform=[sg.Translate(margin - x_min + x_pos, margin - y_min + y_pos)]
         )
 
+        self.lock = Lock()
+
         self.press_counter = [0] * 12
         self.memory_counter = [0] * 12
         self.press_counter_past = [0] * 12
@@ -269,7 +271,7 @@ class CircleOfFifths():
 
         self.last_notes = FifoList()
 
-        self.last_timestamp_present = self.last_timestamp_past = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
+        self.last_timestamp_present = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
 
         self.orig_fill_color = {}
         for note in self.NOTES:
@@ -303,7 +305,7 @@ class CircleOfFifths():
 
     def update(self):
         current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
-        delta_timestamp = current_timestamp - self.last_timestamp_past
+        #delta_timestamp = current_timestamp - self.last_timestamp_past
         threshold_timestamp = current_timestamp - self.MEM_THRESHOLD
 
         data = self.last_notes.peek()
@@ -317,7 +319,6 @@ class CircleOfFifths():
                 self.last_notes.pop()
                 #print("%s" % ((action, num_key, num_octave, num_note, note, channel),))
 
-
                 if action:
                     self.press_counter_past[num_note] += 1
                 else:
@@ -329,19 +330,27 @@ class CircleOfFifths():
                 else:
                     self.model_elements[inner_label].fill = self.orig_fill_color[inner_label]
 
-        self.adj_memory()
-        self.last_timestamp_past = current_timestamp
+        self.lock.acquire()
+        try:
+            self.adj_memory()
+            #self.last_timestamp_past = current_timestamp
+        finally:
+            self.lock.release()
 
     def press(self, num_key, channel, action=True):
         current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
         delta_timestamp = current_timestamp - self.last_timestamp_present
 
-        for num_note in range(0, 12):
-            self.accum_time[num_note] = self.accum_time[num_note] * self.mem_f(delta_timestamp) # Move current value into the past
-            # Update accumulated time with previous value of press_counter, before updating it
-            if self.press_counter[num_note] > 0:
-                 self.accum_time[num_note] += self.mem_F(delta_timestamp) # Add more, if key pressed
-        print("%s" % (self.accum_time,))
+        self.lock.acquire()
+        try:
+            for num_note in range(0, 12):
+                self.accum_time[num_note] = self.accum_time[num_note] * self.mem_f(delta_timestamp) # Move current value into the past
+                # Update accumulated time with previous value of press_counter, before updating it
+                if self.press_counter[num_note] > 0:
+                     self.accum_time[num_note] += self.mem_F(delta_timestamp) # Add more, if key pressed
+            print("%s" % (self.accum_time,))
+        finally:
+            self.lock.release()
 
         num_octave = num_key // 12
         num_note = (num_key*7)%12 % 12
@@ -362,8 +371,12 @@ class CircleOfFifths():
         else:
             self.model_elements[outer_label].fill = self.orig_fill_color[outer_label]
 
-        self.adj_memory()
-        self.last_timestamp_present = current_timestamp
+        self.lock.acquire()
+        try:
+            self.adj_memory()
+            self.last_timestamp_present = current_timestamp
+        finally:
+            self.lock.release()
 
 class MusicKeybOctave():
     NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
