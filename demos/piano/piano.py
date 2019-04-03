@@ -202,7 +202,7 @@ def adj_color(red, green, blue, factor=1.0):
 
 # See: https://sashat.me/2017/01/11/list-of-20-simple-distinct-colors/
 COLORS_RGB = [
-    (230, 25, 75),   (60, 180, 75),   (255, 225, 25),  (67, 99, 216),   (245, 130, 49),
+    (60, 180, 75),   (230, 25, 75),   (67, 99, 216),   (255, 225, 25),  (245, 130, 49),
     (145, 30, 180),  (66, 212, 244),  (240, 50, 230),  (191, 239, 69),  (250, 190, 190),
     (70, 153, 144),  (230, 190, 255), (154, 99, 36),   (255, 250, 200), (128, 0, 0),
     (170, 255, 195), (128, 128, 0),   (255, 216, 177), (0, 0, 117),     (169, 169, 169),
@@ -228,6 +228,7 @@ class CircleOfFifths():
     NOTES = ['C', 'G', 'D', 'A', 'E', 'Cb', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F']
     COLORS = [sg.Color(*adj_color(r, g, b)) for (r, g, b) in COLORS_RGB]
     MEM_COLOR = sg.Color(169, 169, 169)
+    MEM_COLORS = [ sg.Color(int(169.*i/10.) , int(169.*i/10.), int(169.*i/10.)) for i in range(0,10)]
     MEM_THRESHOLD = 10.0 # In floating-point seconds
 
     def __init__(self, x_pos=0, y_pos=0):
@@ -250,6 +251,11 @@ class CircleOfFifths():
         self.press_counter = [0] * 12
         self.memory_counter = [0] * 12
 
+        self.last_timestamp_present = self.last_timestamp_past = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
+        self.time_counter_present = [0] * 12
+        self.total_time_counter_present = 0
+        self.press_counter_past = [0] * 12
+
         self.last_notes = FifoList()
 
         self.orig_fill_color = {}
@@ -266,9 +272,20 @@ class CircleOfFifths():
         (x_min, y_min), (x_max, y_max) = self.model_root.aabbox()
         return (x_max - x_min), (y_max - y_min)
 
+    def adj_memory(self):
+        for num_note in range(0, 12):
+            note = self.NOTES[num_note]
+            inner_label = 'inner_' + note
+            if self.press_counter[num_note] > 0 or self.memory_counter[num_note] > 0:
+                self.model_elements[inner_label].fill = self.MEM_COLOR
+            else:
+                self.model_elements[inner_label].fill = self.orig_fill_color[inner_label]
+
     def update(self):
         current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
+        delta_timestamp = current_timestamp - self.last_timestamp_past
         threshold_timestamp = current_timestamp - self.MEM_THRESHOLD
+
         data = self.last_notes.peek()
         while data is not None:
             timestamp, action, num_key, num_octave, num_note, note, channel = data
@@ -279,6 +296,7 @@ class CircleOfFifths():
             if timestamp < threshold_timestamp:
                 self.last_notes.pop()
                 #print("%s" % ((action, num_key, num_octave, num_note, note, channel),))
+
                 if not action:
                     self.memory_counter[num_note] -= 1
 
@@ -287,8 +305,17 @@ class CircleOfFifths():
                 else:
                     self.model_elements[inner_label].fill = self.orig_fill_color[inner_label]
 
+        self.adj_memory()
+        self.last_timestamp_past = current_timestamp
+
     def press(self, num_key, channel, action=True):
         current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
+        delta_timestamp = current_timestamp - self.last_timestamp_present
+
+        self.total_time_counter_present += delta_timestamp
+        for num_note in range(0, 12):
+            if self.press_counter[num_note] > 0:
+                self.time_counter_present[num_note] += delta_timestamp
 
         num_octave = num_key // 12
         num_note = (num_key*7)%12 % 12
@@ -301,7 +328,6 @@ class CircleOfFifths():
         if action:
             self.press_counter[num_note] += 1
             self.memory_counter[num_note] += 1
-            self.model_elements[inner_label].fill = self.MEM_COLOR
         else:
             self.press_counter[num_note] -= 1
 
@@ -309,6 +335,9 @@ class CircleOfFifths():
             self.model_elements[outer_label].fill = self.COLORS[channel]
         else:
             self.model_elements[outer_label].fill = self.orig_fill_color[outer_label]
+
+        self.adj_memory()
+        self.last_timestamp_present = current_timestamp
 
 class MusicKeybOctave():
     NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
@@ -452,5 +481,5 @@ pyglet.clock.schedule_interval(update, 1/60, window)
 
 pyglet.app.run()
 
-#midi_thread.join()
-#print("All threads finished")
+midi_thread.join()
+print("All threads finished")
