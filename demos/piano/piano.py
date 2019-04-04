@@ -161,8 +161,13 @@ class RtMidiSoundPlayer():
         available_ports = self.midi_in.get_ports()
         if available_ports:
             midi_port_num = 1
-            self.midi_in_port = self.midi_in.open_port(midi_port_num)
-            print("Using MIDI Interface {}: '{}'".format(midi_port_num, available_ports[midi_port_num]))
+            try:
+                self.midi_in_port = self.midi_in.open_port(midi_port_num)
+            except rtmidi.InvalidPortError:
+                print("Failed to open MIDI input")
+                self.midi_in_port = None
+                return
+            print("Using MIDI input Interface {}: '{}'".format(midi_port_num, available_ports[midi_port_num]))
         else:
             print("Creating virtual MIDI input.")
             self.midi_in_port = self.midi_in.open_virtual_port("midi_driving_in")
@@ -378,8 +383,11 @@ class HexLayout():
 
         self.press_counter = [0] * 12
 
-        # self.note_map = ['cC',  'cG',  'dD',  'dA',  'dE',  'dB', 'aGb', 'bDb', 'bAb', 'bEb', 'bBb', 'cF'] # C, Am
-        self.note_map =   ['cGb', 'cDb', 'dAb', 'dEb', 'dBb', 'dF', 'aC',  'bG',  'bD',  'bA',  'bE',  'cB']
+        #self.note_map  = ['cC',  'cG',  'dD',  'dA',  'dE',  'dB', 'aGb', 'bDb', 'bAb', 'bEb', 'bBb', 'cF' ]
+        #self.note_map  = ['cGb', 'cDb', 'dAb', 'dEb', 'dBb', 'dF', 'aC',  'bG',  'bD',  'bA',  'bE',  'cB' ]
+
+        #self.note_map   = ['cEb', 'cBb', 'cF',  'dC',  'dG',  'dD', 'dA',  'bE_',  'bB',  'bGb', 'cDb_', 'cAb_']
+        self.note_map   = ['cEb', 'cBb', 'dF_',  'dC',  'dG',  'dD', 'aA',  'bE_',  'bB',  'bGb', 'bDb', 'cAb_']
 
         self.orig_fill_color = {}
         for id in self.note_map:
