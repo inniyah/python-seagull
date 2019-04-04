@@ -231,17 +231,19 @@ class FifoList():
     def peek(self):
         return self.data[self.nextout + 1] if self.data else None
 
+NUM_COLORS = 30
+
 class CircleOfFifths():
     NOTES = ['C', 'G', 'D', 'A', 'E', 'B', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F']
     COLORS = [sg.Color(*adj_color(r, g, b)) for (r, g, b) in COLORS_RGB]
-    MEM_COLORS = [ sg.Color(int(210.*(20-i)/20.) , int(230.*(20-i)/20.), int(250.*(20-i)/20.)) for i in range(0,21)]
+    MEM_COLORS = [ sg.Color(int(210.*(NUM_COLORS-i)/NUM_COLORS) , int(230.*(NUM_COLORS-i)/NUM_COLORS), int(250.*(NUM_COLORS-i)/NUM_COLORS)) for i in range(0, NUM_COLORS+1)]
     MEM_THRESHOLD = 10.0 # In floating-point seconds
 
     # Forgetting factor: f(t) = 1.0 / (K ** ( t / T ))
     # Integral of f(t): F(t) = C - T / (logn(K) * K ** ( t / T ))
     # If F(t) == 0: C = T0 / logn(K)
     MEM_T = 1.0 # In T floating-point seconds
-    MEM_K = 3.0 # The value will be divided by K
+    MEM_K = 3.0 # The value will be divided by K. It needs to be > 1
     MEM_C = MEM_T / math.log(MEM_K) # As calculated above
 
     def mem_f(self, t): # when t -> inf, mem_f -> 0
@@ -365,9 +367,36 @@ class CircleOfFifths():
 
         self.adj_memory()
 
+NOTES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'] * 2
+
 class HexLayout():
-    IDLE_COLOR = sg.Color(int(200.) , int(200.), int(200.))
     COLORS = [sg.Color(*adj_color(r, g, b)) for (r, g, b) in COLORS_RGB]
+    MEM_COLORS = [
+        sg.Color(
+            int(180. - 120. * ((NUM_COLORS-i)/NUM_COLORS)**1.5),
+            int(200. - 120. * ((NUM_COLORS-i)/NUM_COLORS)**1.5),
+            int(210. - 120. * ((NUM_COLORS-i)/NUM_COLORS)**1.5)
+        ) for i in range(0, NUM_COLORS+1)]
+    IDLE_COLOR = sg.Color(int(60.) , int(80.), int(90.))
+
+    TRIADS_MAJOR      = [ (1<<i | 1<<((i+4)%12) | 1<<((i+7)%12)) for i in range(0, 12) ]
+    TRIADS_MINOR      = [ (1<<i | 1<<((i+3)%12) | 1<<((i+7)%12)) for i in range(0, 12) ]
+    TRIADS_DIMINISHED = [ (1<<i | 1<<((i+3)%12) | 1<<((i+6)%12)) for i in range(0, 12) ]
+    TRIADS_AUGMENTED  = [ (1<<i | 1<<((i+4)%12) | 1<<((i+8)%12)) for i in range(0, 12) ]
+    TRIADS_SUSPENDED  = [ (1<<i | 1<<((i+2)%12) | 1<<((i+7)%12)) for i in range(0, 12) ]
+
+    # Forgetting factor: f(t) = 1.0 / (K ** ( t / T ))
+    # Integral of f(t): F(t) = C - T / (logn(K) * K ** ( t / T ))
+    # If F(t) == 0: C = T0 / logn(K)
+    MEM_T = 1.0 # In T floating-point seconds
+    MEM_K = 2.0 # The value will be divided by K. It needs to be > 1
+    MEM_C = MEM_T / math.log(MEM_K) # As calculated above
+
+    def mem_f(self, t): # when t -> inf, mem_f -> 0
+        return 1.0 / (self.MEM_K ** (t / self.MEM_T))
+
+    def mem_F(self, t): # when t -> inf, mem_F -> MEM_C
+        return self.MEM_C - self.MEM_T / (math.log(self.MEM_K) * (self.MEM_K ** (t / self.MEM_T)))
 
     def __init__(self, x_pos=0, y_pos=0):
         with open(os.path.join(this_dir, "HexLayout.svg")) as f:
@@ -382,17 +411,28 @@ class HexLayout():
         )
 
         self.press_counter = [0] * 12
+        self.accum_time = [0.] * 12
+        self.last_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
 
         #self.note_map  = ['cC',  'cG',  'dD',  'dA',  'dE',  'dB', 'aGb', 'bDb', 'bAb', 'bEb', 'bBb', 'cF' ]
         #self.note_map  = ['cGb', 'cDb', 'dAb', 'dEb', 'dBb', 'dF', 'aC',  'bG',  'bD',  'bA',  'bE',  'cB' ]
 
         #self.note_map   = ['cEb', 'cBb', 'cF',  'dC',  'dG',  'dD', 'dA',  'bE_',  'bB',  'bGb', 'cDb_', 'cAb_']
-        self.note_map   = ['cEb', 'cBb', 'dF_',  'dC',  'dG',  'dD', 'aA',  'bE_',  'bB',  'bGb', 'bDb', 'cAb_']
+        #self.note_map   = ['cEb', 'cBb', 'dF_',  'dC',  'dG',  'dD', 'aA',  'bE_',  'bB',  'bGb', 'bDb', 'cAb_']
+
+        #self.note_map  = ['cGb', 'cDb', ['cAb', 'dAb'], 'dEb', ['aBb', 'dBb'], ['aF', 'dF', 'eF'] , ['aC', 'eC'],
+        #                 ['aG', 'bG', 'eG'], ['bD', 'eD'],  'bA', ['bE', 'cE'], ['bB_', 'cB'] ]
+
+        #self.note_map  = ['cC',  'cG',  'dD',  'dA',  'dE',  'dB',  'aGb', 'bDb', 'bAb', 'bEb', 'bBb', 'cF' ]
+        self.note_map  = ['cG',  'cD',  'dA',  'dE',  'dB',  'dGb', 'aDb', 'bAb', 'bEb', 'bBb', 'bF',  'cC' ]
 
         self.orig_fill_color = {}
-        for id in self.note_map:
-            self.orig_fill_color[id] = self.model_elements[id].fill
-            self.model_elements[id].fill = self.IDLE_COLOR
+        for ids in self.note_map:
+            if not isinstance(ids, (list, tuple)):
+                ids = [ids]
+            for id in ids:
+                self.orig_fill_color[id] = self.model_elements[id].fill
+                self.model_elements[id].fill = self.IDLE_COLOR
 
     def root(self):
         return self.model_root
@@ -401,20 +441,54 @@ class HexLayout():
         (x_min, y_min), (x_max, y_max) = self.model_root.aabbox()
         return (x_max - x_min), (y_max - y_min)
 
+    def update(self):
+        current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
+        delta_timestamp = current_timestamp - self.last_timestamp
+        for num_note in range(0, 12):
+            self.accum_time[num_note] = self.accum_time[num_note] * self.mem_f(delta_timestamp) # Move current value into the past
+            # Update accumulated time with previous value of press_counter, before updating it
+            if self.press_counter[num_note] > 0:
+                 self.accum_time[num_note] += self.mem_F(delta_timestamp) # Add more, if key pressed
+        self.last_timestamp = current_timestamp
+        #print("%s" % (self.accum_time,))
+
+        for num_note in range(0, 12):
+            note_ids = self.note_map[num_note]
+            if not isinstance(note_ids, (list, tuple)):
+                note_ids = [note_ids]
+            if self.press_counter[num_note] > 0: # Note currently being pressed
+                i = int(len(self.MEM_COLORS) * self.accum_time[num_note] / self.MEM_C)
+                for note_id in note_ids:
+                    self.model_elements[note_id].fill = self.MEM_COLORS[max(0, min(i, len(self.MEM_COLORS)-1))]
+                pass
+            elif self.accum_time[num_note] > 0.1 * self.MEM_C: # Note played recently, fresh in memory
+                i = int(len(self.MEM_COLORS) * self.accum_time[num_note] / self.MEM_C)
+                for note_id in note_ids:
+                    self.model_elements[note_id].fill = self.MEM_COLORS[max(0, min(i, len(self.MEM_COLORS)-1))]
+            else:
+                for note_id in note_ids: # Note not used recently
+                    self.model_elements[note_id].fill = self.IDLE_COLOR
+
     def press(self, num_key, channel, action=True):
         num_octave = num_key // 12
         num_note = (num_key*7)%12 % 12
-        note_id = self.note_map[num_note]
+
+        note_ids = self.note_map[num_note]
+        if not isinstance(note_ids, (list, tuple)):
+            note_ids = [note_ids]
 
         if action:
             self.press_counter[num_note] += 1
         else:
             self.press_counter[num_note] -= 1
 
-        if self.press_counter[num_note] > 0:
-            self.model_elements[note_id].fill = self.COLORS[channel]
-        else:
-            self.model_elements[note_id].fill = self.IDLE_COLOR
+        for note_id in note_ids:
+            if self.press_counter[num_note] > 0:
+                self.model_elements[note_id].stroke = self.COLORS[channel]
+            else:
+                self.model_elements[note_id].stroke = self.IDLE_COLOR
+
+        self.update()
 
 class MusicKeybOctave():
     NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
@@ -554,6 +628,7 @@ def on_mouse_drag(x, y, dx, dy, buttons, modifiers):
 
 def update(dt, window=None):
     fifths.update()
+    hexagonal.update()
 
 pyglet.clock.schedule_interval(update, 1/60, window)
 
