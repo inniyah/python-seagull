@@ -377,8 +377,9 @@ class HexLayout():
             int(200. - 120. * ((NUM_COLORS-i)/NUM_COLORS)**1.5),
             int(210. - 120. * ((NUM_COLORS-i)/NUM_COLORS)**1.5)
         ) for i in range(0, NUM_COLORS+1)]
-    IDLE_COLOR = sg.Color(int(60.) , int(80.), int(90.))
-    BLACK_COLOR = sg.Color(0, 0, 0)
+
+    IDLE_COLOR = sg.Color(50, 50, 50)
+    IDLE_STROKE = sg.Color(0, 0, 0)
 
     TRIADS_MAJOR      = [ (1<<i | 1<<((i+4)%12) | 1<<((i+7)%12)) for i in range(0, 12) ]
     TRIADS_MINOR      = [ (1<<i | 1<<((i+3)%12) | 1<<((i+7)%12)) for i in range(0, 12) ]
@@ -389,7 +390,7 @@ class HexLayout():
     # Forgetting factor: f(t) = 1.0 / (K ** ( t / T ))
     # Integral of f(t): F(t) = C - T / (logn(K) * K ** ( t / T ))
     # If F(t) == 0: C = T0 / logn(K)
-    MEM_T = 1.0 # In T floating-point seconds
+    MEM_T = 0.8 # In T floating-point seconds
     MEM_K = 2.0 # The value will be divided by K. It needs to be > 1
     MEM_C = MEM_T / math.log(MEM_K) # As calculated above
 
@@ -425,14 +426,38 @@ class HexLayout():
         #                 ['aG', 'bG', 'eG'], ['bD', 'eD'],  'bA', ['bE', 'cE'], ['bB_', 'cB'] ]
 
         #self.note_map  = ['cC',  'cG',  'dD',  'dA',  'dE',  'dB',  'aGb', 'bDb', 'bAb', 'bEb', 'bBb', 'cF' ]
-        self.note_map  = ['cG',  'cD',  'dA',  'dE',  'dB',  'dGb', 'aDb', 'bAb', 'bEb', 'bBb', 'bF',  'cC' ]
+        #self.note_map  = ['cG',  'cD',  'dA',  'dE',  'dB',  'dGb', 'aDb', 'bAb', 'bEb', 'bBb', 'bF',  'cC' ]
+
+        self.note_map  = [\
+            [row + 'G'  for row in ['a', 'b', 'c', 'd', 'e']],
+            [row + 'D'  for row in ['a', 'b', 'c', 'd', 'e']],
+            [row + 'A'  for row in ['a', 'b', 'c', 'd', 'e']],
+            [row + 'E'  for row in ['a', 'b', 'c', 'd', 'e']],
+            [row + 'B'  for row in ['a', 'b', 'c', 'd', 'e']],
+            [row + 'Gb' for row in ['a', 'b', 'c', 'd', 'e']],
+            [row + 'Db' for row in ['a', 'b', 'c', 'd', 'e']],
+            [row + 'Ab' for row in ['a', 'b', 'c', 'd', 'e']],
+            [row + 'Eb' for row in ['a', 'b', 'c', 'd', 'e']],
+            [row + 'Bb' for row in ['a', 'b', 'c', 'd', 'e']],
+            [row + 'F'  for row in ['a', 'b', 'c', 'd', 'e']],
+            [row + 'C'  for row in ['a', 'b', 'c', 'd', 'e']],
+        ]
+        for note_ids in self.note_map:
+            if not isinstance(note_ids, (list, tuple)):
+                note_ids = [note_ids]
+            new_note_ids = [] 
+            for note_id in note_ids:
+                new_note_id = note_id + '_'
+                if new_note_id in self.model_elements:
+                    new_note_ids.append(new_note_id)
+            note_ids += new_note_ids
 
         for note_ids in self.note_map:
             if not isinstance(note_ids, (list, tuple)):
                 note_ids = [note_ids]
             for note_id in note_ids:
                 self.model_elements[note_id].fill = self.IDLE_COLOR
-                self.model_elements[note_id].stroke = self.BLACK_COLOR
+                self.model_elements[note_id].stroke = self.IDLE_STROKE
                 self.model_elements[note_id].stroke_width = 1
 
     def root(self):
@@ -488,7 +513,7 @@ class HexLayout():
                 self.model_elements[note_id].stroke = self.COLORS[channel]
                 self.model_elements[note_id].stroke_width = 3
             else:
-                self.model_elements[note_id].stroke = self.BLACK_COLOR
+                self.model_elements[note_id].stroke = self.IDLE_STROKE
                 self.model_elements[note_id].stroke_width = 1
 
         self.update()
