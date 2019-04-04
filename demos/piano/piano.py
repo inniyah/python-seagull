@@ -378,6 +378,7 @@ class HexLayout():
             int(210. - 120. * ((NUM_COLORS-i)/NUM_COLORS)**1.5)
         ) for i in range(0, NUM_COLORS+1)]
     IDLE_COLOR = sg.Color(int(60.) , int(80.), int(90.))
+    BLACK_COLOR = sg.Color(0, 0, 0)
 
     TRIADS_MAJOR      = [ (1<<i | 1<<((i+4)%12) | 1<<((i+7)%12)) for i in range(0, 12) ]
     TRIADS_MINOR      = [ (1<<i | 1<<((i+3)%12) | 1<<((i+7)%12)) for i in range(0, 12) ]
@@ -426,13 +427,13 @@ class HexLayout():
         #self.note_map  = ['cC',  'cG',  'dD',  'dA',  'dE',  'dB',  'aGb', 'bDb', 'bAb', 'bEb', 'bBb', 'cF' ]
         self.note_map  = ['cG',  'cD',  'dA',  'dE',  'dB',  'dGb', 'aDb', 'bAb', 'bEb', 'bBb', 'bF',  'cC' ]
 
-        self.orig_fill_color = {}
-        for ids in self.note_map:
-            if not isinstance(ids, (list, tuple)):
-                ids = [ids]
-            for id in ids:
-                self.orig_fill_color[id] = self.model_elements[id].fill
-                self.model_elements[id].fill = self.IDLE_COLOR
+        for note_ids in self.note_map:
+            if not isinstance(note_ids, (list, tuple)):
+                note_ids = [note_ids]
+            for note_id in note_ids:
+                self.model_elements[note_id].fill = self.IDLE_COLOR
+                self.model_elements[note_id].stroke = self.BLACK_COLOR
+                self.model_elements[note_id].stroke_width = 1
 
     def root(self):
         return self.model_root
@@ -485,8 +486,10 @@ class HexLayout():
         for note_id in note_ids:
             if self.press_counter[num_note] > 0:
                 self.model_elements[note_id].stroke = self.COLORS[channel]
+                self.model_elements[note_id].stroke_width = 3
             else:
-                self.model_elements[note_id].stroke = self.IDLE_COLOR
+                self.model_elements[note_id].stroke = self.BLACK_COLOR
+                self.model_elements[note_id].stroke_width = 1
 
         self.update()
 
