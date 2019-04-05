@@ -545,7 +545,7 @@ class CircleOfTriads():
     COLOR_GRAY = sg.Color(128, 128, 128)
     COLOR_WHITE = sg.Color(255, 255, 255)
 
-    MEM_THRESHOLD = 0.2 # In floating-point seconds
+    MEM_THRESHOLD = 0.5 # In floating-point seconds
 
     TRIADS_MAJOR      = [ (1<<i | 1<<((i+4)%12) | 1<<((i+7)%12)) for i in range(0, 12) ]
     TRIADS_MINOR      = [ (1<<i | 1<<((i+3)%12) | 1<<((i+7)%12)) for i in range(0, 12) ]
@@ -607,7 +607,7 @@ class CircleOfTriads():
             except (TypeError, IndexError):
                 queue_timestamp = None
 
-            print("%s" % (self.memory_counter,))
+            #print("%s" % (self.memory_counter,))
 
         for num_note in range(0, 12):
             note_id = self.NOTES[num_note]
