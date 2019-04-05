@@ -571,8 +571,11 @@ class CircleOfTriads():
         self.memory_counter = [0] * 12
         self.last_notes = []
 
-        for circle in self.CIRCLES:
-            for note in self.NOTES:
+        for note in self.NOTES:
+            self.model_elements[note].stroke = self.COLOR_GRAY
+            self.model_elements[note].stroke_width = 1
+            self.model_elements[note].active = False
+            for circle in self.CIRCLES:
                 element_id = '{}{}'.format(circle, note)
                 self.model_elements[element_id].fill = self.COLOR_WHITE
                 self.model_elements[element_id].stroke = self.COLOR_GRAY
@@ -612,11 +615,13 @@ class CircleOfTriads():
         for num_note in range(0, 12):
             note_id = self.NOTES[num_note]
             if self.memory_counter[num_note] > 0:
-                self.model_elements['z' + note_id].stroke = self.COLOR_BLACK
-                self.model_elements['z' + note_id].stroke_width = 2
+                self.model_elements[note_id].stroke = self.COLOR_BLACK
+                self.model_elements[note_id].stroke_width = 2
+                self.model_elements[note_id].active = True
             else:
-                self.model_elements['z' + note_id].stroke = self.COLOR_GRAY
-                self.model_elements['z' + note_id].stroke_width = 1
+                self.model_elements[note_id].stroke = self.COLOR_GRAY
+                self.model_elements[note_id].stroke_width = 1
+                self.model_elements[note_id].active = False
 
     def press(self, num_key, channel, action=True):
         current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
@@ -636,9 +641,10 @@ class CircleOfTriads():
             assert(self.press_counter[num_note] >= 0)
 
         if self.press_counter[num_note] > 0:
-            self.model_elements['z' + note_id].fill = COLORS[channel]
+            self.model_elements[note_id].fill = COLORS[channel]
+            self.model_elements[note_id].active = True
         else:
-            self.model_elements['z' + note_id].fill = self.COLOR_WHITE
+            self.model_elements[note_id].fill = self.COLOR_WHITE
 
 class MusicKeybOctave():
     NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
@@ -716,19 +722,21 @@ feedback = sg.Group(fill=None, stroke=sg.Color.red)
 #midi_thread = Thread(target = midi_player.random_play, args = (8, 10, 0.3))
 #midi_thread.start()
 
-midi_file_player = MidiFileSoundPlayer(os.path.join(this_dir, 'Bach_Fugue_BWV578.mid'), [piano, fifths, hexagonal, triads])
+midi_filename = 'Bach_Fugue_BWV578.mid'
+#midi_filename = 'Debussy_Arabesque_No1.mid'
+midi_file_player = MidiFileSoundPlayer(os.path.join(this_dir, midi_filename), [piano, fifths, hexagonal, triads])
 midi_thread = Thread(target = midi_file_player.play)
 midi_thread.start()
 
 midi_input = RtMidiSoundPlayer([piano, fifths, hexagonal, triads])
 
 width, height = window_size
-config = pyglet.gl.Config(sample_buffers=1, samples=4)
+#config = pyglet.gl.Config(sample_buffers=1, samples=4)
 window = pyglet.window.Window(
     width=width,
     height=height,
     resizable=True,
-    config=config,
+#    config=config,
     )
 
 gl_prepare()
