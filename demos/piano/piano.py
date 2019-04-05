@@ -621,7 +621,15 @@ class CircleOfTriads():
                 if (mem_pitch_classes & triad_signature) == triad_signature:
                     self.model_elements[label_prefix + note_id].fill = color_on
                     self.model_elements[label_prefix + note_id].active = True
+                    if (pitch_classes & triad_signature) == triad_signature:
+                        self.model_elements[label_prefix + note_id].stroke = self.COLOR_BLACK
+                        self.model_elements[label_prefix + note_id].stroke_width = 3
+                    else:
+                        self.model_elements[label_prefix + note_id].stroke = self.COLOR_GRAY
+                        self.model_elements[label_prefix + note_id].stroke_width = 1
                 else:
+                    self.model_elements[label_prefix + note_id].stroke = self.COLOR_GRAY
+                    self.model_elements[label_prefix + note_id].stroke_width = 1
                     if color_off is None:
                         self.model_elements[label_prefix + note_id].active = False
                     else:
