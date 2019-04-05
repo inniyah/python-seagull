@@ -381,12 +381,6 @@ class HexLayout():
     IDLE_COLOR = sg.Color(50, 50, 50)
     IDLE_STROKE = sg.Color(0, 0, 0)
 
-    TRIADS_MAJOR      = [ (1<<i | 1<<((i+4)%12) | 1<<((i+7)%12)) for i in range(0, 12) ]
-    TRIADS_MINOR      = [ (1<<i | 1<<((i+3)%12) | 1<<((i+7)%12)) for i in range(0, 12) ]
-    TRIADS_DIMINISHED = [ (1<<i | 1<<((i+3)%12) | 1<<((i+6)%12)) for i in range(0, 12) ]
-    TRIADS_AUGMENTED  = [ (1<<i | 1<<((i+4)%12) | 1<<((i+8)%12)) for i in range(0, 12) ]
-    TRIADS_SUSPENDED  = [ (1<<i | 1<<((i+2)%12) | 1<<((i+7)%12)) for i in range(0, 12) ]
-
     # Forgetting factor: f(t) = 1.0 / (K ** ( t / T ))
     # Integral of f(t): F(t) = C - T / (logn(K) * K ** ( t / T ))
     # If F(t) == 0: C = T0 / logn(K)
@@ -518,6 +512,53 @@ class HexLayout():
 
         self.update()
 
+class CircleOfTriads():
+    NOTES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'] * 2
+    CIRCLES = ['z', 'y', 'x', 'w', 'v', 'u']
+
+    COLOR_BLACK = sg.Color(0, 0, 0)
+    COLOR_GRAY = sg.Color(128, 128, 128)
+    COLOR_WHITE = sg.Color(255, 255, 255)
+
+    TRIADS_MAJOR      = [ (1<<i | 1<<((i+4)%12) | 1<<((i+7)%12)) for i in range(0, 12) ]
+    TRIADS_MINOR      = [ (1<<i | 1<<((i+3)%12) | 1<<((i+7)%12)) for i in range(0, 12) ]
+    TRIADS_DIMINISHED = [ (1<<i | 1<<((i+3)%12) | 1<<((i+6)%12)) for i in range(0, 12) ]
+    TRIADS_AUGMENTED  = [ (1<<i | 1<<((i+4)%12) | 1<<((i+8)%12)) for i in range(0, 12) ]
+    TRIADS_SUSPENDED  = [ (1<<i | 1<<((i+2)%12) | 1<<((i+7)%12)) for i in range(0, 12) ]
+    PARALLEL_FIFTHS   = [ (1<<i | 1<<((i+7)%12)) for i in range(0, 12) ]
+
+    def __init__(self, x_pos=0, y_pos=0):
+        with open(os.path.join(this_dir, "CircleOfTriads.svg")) as f:
+            svg = f.read()
+        self.model_root, self.model_elements = parse(svg)
+        (x_min, y_min), (x_max, y_max) = self.model_root.aabbox()
+        self.width = x_max - x_min
+        self.height = y_max - y_min
+        self.model_root = sg.Use(
+            self.model_root,
+            transform=[sg.Translate(margin - x_min + x_pos, margin - y_min + y_pos)]
+        )
+
+        for circle in self.CIRCLES:
+            for note in self.NOTES:
+                element_id = '{}{}'.format(circle, note)
+                self.model_elements[element_id].fill = self.COLOR_WHITE
+                self.model_elements[element_id].stroke = self.COLOR_GRAY
+                #self.model_elements[element_id].active = False
+
+    def root(self):
+        return self.model_root
+
+    def size(self):
+        (x_min, y_min), (x_max, y_max) = self.model_root.aabbox()
+        return (x_max - x_min), (y_max - y_min)
+
+    def press(self, num_key, channel, action=True):
+        num_octave = num_key // 12
+        num_note = (num_key*7)%12 % 12
+
+
+
 class MusicKeybOctave():
     NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
@@ -583,7 +624,8 @@ class MusicKeyboard():
 piano = MusicKeyboard()
 fifths = CircleOfFifths(piano.width + margin)
 hexagonal = HexLayout(0, piano.height + margin)
-scene = sg.Group([piano.root(), fifths.root(), hexagonal.root()])
+triads = CircleOfTriads(hexagonal.width + margin, piano.height + margin)
+scene = sg.Group([piano.root(), fifths.root(), hexagonal.root(), triads.root()])
 
 window_size = int(piano.width + margin + fifths.width + 2 * margin), int(piano.height + margin + hexagonal.height + 2 * margin)
 
