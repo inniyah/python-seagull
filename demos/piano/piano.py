@@ -579,7 +579,7 @@ class CircleOfTriads():
                 element_id = '{}{}'.format(circle, note)
                 self.model_elements[element_id].fill = self.COLOR_WHITE
                 self.model_elements[element_id].stroke = self.COLOR_GRAY
-                #self.model_elements[element_id].active = False
+                self.model_elements[element_id].active = False
 
     def root(self):
         return self.model_root
@@ -590,12 +590,11 @@ class CircleOfTriads():
 
     def update_triads(self):
         for triad_signatures, label_prefix, color_on, color_off in [
-            (self.TRIADS_AUGMENTED,  'z', sg.Color(0, 100, 180),   None),
-            (self.TRIADS_MAJOR,      'y', sg.Color(0, 180, 100),   sg.Color(200, 255, 200)),
+            (self.TRIADS_AUGMENTED,  'z', sg.Color(0, 100, 180),   sg.Color(215, 215, 255)),
+            (self.TRIADS_MAJOR,      'y', sg.Color(0, 180, 100),   sg.Color(210, 255, 210)),
             (self.TRIADS_SUSPENDED,  'x', sg.Color(150, 150, 150), sg.Color(255, 255, 255)),
-            (self.TRIADS_MINOR,      'w', sg.Color(100, 0, 200),   sg.Color(200, 200, 255)),
-            (self.TRIADS_DIMINISHED, 'v', sg.Color(200, 0, 100),   None),
-            (self.PARALLEL_FIFTHS,   'u', sg.Color(100, 100, 100), None),
+            (self.TRIADS_MINOR,      'w', sg.Color(100, 0, 200),   sg.Color(215, 215, 255)),
+            (self.TRIADS_DIMINISHED, 'v', sg.Color(200, 0, 100),   sg.Color(255, 215, 215)),
         ]:
             pitch_classes = 0
             mem_pitch_classes = 0
