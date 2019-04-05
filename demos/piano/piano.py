@@ -588,6 +588,34 @@ class CircleOfTriads():
         (x_min, y_min), (x_max, y_max) = self.model_root.aabbox()
         return (x_max - x_min), (y_max - y_min)
 
+    def update_triads(self):
+        for triad_signatures, label_prefix, color_on, color_off in [
+            (self.TRIADS_AUGMENTED,  'z', sg.Color(0, 100, 180),   None),
+            (self.TRIADS_MAJOR,      'y', sg.Color(0, 180, 100),   sg.Color(200, 255, 200)),
+            (self.TRIADS_SUSPENDED,  'x', sg.Color(150, 150, 150), sg.Color(255, 255, 255)),
+            (self.TRIADS_MINOR,      'w', sg.Color(100, 0, 200),   sg.Color(200, 200, 255)),
+            (self.TRIADS_DIMINISHED, 'v', sg.Color(200, 0, 100),   None),
+            (self.PARALLEL_FIFTHS,   'u', sg.Color(100, 100, 100), None),
+        ]:
+            pitch_classes = 0
+            mem_pitch_classes = 0
+            for num_note in range(0, 12):
+                value = 1 << ((num_note*7) % 12)
+                if self.press_counter[num_note] > 0:
+                    pitch_classes |= value
+                if self.memory_counter[num_note] > 0:
+                    mem_pitch_classes |= value
+            for num, triad_signature in enumerate(triad_signatures):
+                note_id = self.NOTES[((num*7) % 12)]
+                if (mem_pitch_classes & triad_signature) == triad_signature:
+                    self.model_elements[label_prefix + note_id].fill = color_on
+                    self.model_elements[label_prefix + note_id].active = True
+                else:
+                    if color_off is None:
+                        self.model_elements[label_prefix + note_id].active = False
+                    else:
+                        self.model_elements[label_prefix + note_id].fill = color_off
+
     def update(self):
         current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
         threshold_timestamp = current_timestamp - self.MEM_THRESHOLD
@@ -623,6 +651,8 @@ class CircleOfTriads():
                 self.model_elements[note_id].stroke_width = 1
                 self.model_elements[note_id].active = False
 
+        self.update_triads()
+
     def press(self, num_key, channel, action=True):
         current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
 
@@ -645,6 +675,8 @@ class CircleOfTriads():
             self.model_elements[note_id].active = True
         else:
             self.model_elements[note_id].fill = self.COLOR_WHITE
+
+        self.update_triads()
 
 class MusicKeybOctave():
     NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
@@ -722,8 +754,8 @@ feedback = sg.Group(fill=None, stroke=sg.Color.red)
 #midi_thread = Thread(target = midi_player.random_play, args = (8, 10, 0.3))
 #midi_thread.start()
 
-midi_filename = 'Bach_Fugue_BWV578.mid'
-#midi_filename = 'Debussy_Arabesque_No1.mid'
+#midi_filename = 'Bach_Fugue_BWV578.mid'
+midi_filename = 'Debussy_Arabesque_No1.mid'
 midi_file_player = MidiFileSoundPlayer(os.path.join(this_dir, midi_filename), [piano, fifths, hexagonal, triads])
 midi_thread = Thread(target = midi_file_player.play)
 midi_thread.start()
