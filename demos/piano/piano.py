@@ -7,6 +7,7 @@ import math
 import json
 import time
 import random
+import argparse
 import pyglet
 import fluidsynth
 import rtmidi
@@ -15,6 +16,17 @@ from threading import Thread, Lock
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(this_dir, '..', '..'))
+parser = argparse.ArgumentParser(description='Piano Demo')
+parser.add_argument('-m', '--midi', type=str, help='Midi file', required=False, default=None)
+parser.add_argument('-v', '--verbose', action="store_true", help="verbose output" )
+args = parser.parse_args()
+
+if args.verbose:
+	print("~ Verbose!")
+else:
+	print("~ Not so verbose")
+
+print("~ Midi Filename: {}".format(args.midi))
 
 from seagull import scenegraph as sg
 from seagull.xml import parse, serialize
@@ -274,7 +286,7 @@ class CircleOfFifths():
         self.model_root, self.model_elements = parse(svg)
         #sys.stdout.write(serialize(self.model_root))
         #sys.stdout.write("elements = %s\n" % (self.model_elements,))
-        json.dump(self.model_root, sys.stdout, cls=JSONDebugEncoder, indent=2, sort_keys=True)
+        #json.dump(self.model_root, sys.stdout, cls=JSONDebugEncoder, indent=2, sort_keys=True)
         #json.dump(self.model_elements, sys.stdout, cls=JSONDebugEncoder, indent=2, sort_keys=True)
         #sys.stdout.write("\n") # Python JSON dump misses last newline
         (x_min, y_min), (x_max, y_max) = self.model_root.aabbox()
@@ -753,11 +765,16 @@ feedback = sg.Group(fill=None, stroke=sg.Color.red)
 #midi_thread = Thread(target = midi_player.random_play, args = (8, 10, 0.3))
 #midi_thread.start()
 
+midi_filename = args.midi
 #midi_filename = 'Bach_Fugue_BWV578.mid'
-midi_filename = 'Debussy_Arabesque_No1.mid'
-midi_file_player = MidiFileSoundPlayer(os.path.join(this_dir, midi_filename), [piano, fifths, hexagonal, triads])
-midi_thread = Thread(target = midi_file_player.play)
-midi_thread.start()
+#midi_filename = 'Debussy_Arabesque_No1.mid'
+if not midi_filename is None:
+    midi_file_player = MidiFileSoundPlayer(os.path.join(this_dir, midi_filename), [piano, fifths, hexagonal, triads])
+    midi_thread = Thread(target = midi_file_player.play)
+    midi_thread.start()
+else:
+    midi_file_player = None
+    midi_thread = None
 
 midi_input = RtMidiSoundPlayer([piano, fifths, hexagonal, triads])
 
@@ -831,5 +848,6 @@ pyglet.app.run()
 
 pyglet.clock.schedule_interval(update, 0, window) # Specifying an interval of 0 prevents the function from being called again
 
-midi_thread.join()
-print("All threads finished")
+if midi_thread:
+    midi_thread.join()
+    print("All threads finished")
