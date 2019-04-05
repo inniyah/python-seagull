@@ -123,6 +123,7 @@ class MidiFileSoundPlayer():
             print('  {:2d}: {!r}'.format(i, track.name.strip()))
 
     def play(self):
+        time.sleep(1)
         for message in self.midi_file.play(meta_messages=True):
             #sys.stdout.write(repr(message) + '\n')
             #sys.stdout.flush()
@@ -215,29 +216,44 @@ COLORS_RGB = [
     (170, 255, 195), (128, 128, 0),   (255, 216, 177), (0, 0, 117),     (169, 169, 169),
 ]
 
+COLORS = [sg.Color(*adj_color(r, g, b)) for (r, g, b) in COLORS_RGB]
+
 class FifoList():
     def __init__(self):
         self.data = {}
         self.nextin = 0
         self.nextout = 0
+        self.lock = Lock()
     def append(self, data):
-        self.nextin += 1
-        self.data[self.nextin] = data
+        try:
+            self.lock.acquire()
+            self.nextin += 1
+            self.data[self.nextin] = data
+        finally:
+            self.lock.release()
     def pop(self):
-        self.nextout += 1
-        result = self.data[self.nextout]
-        del self.data[self.nextout]
+        try:
+            self.lock.acquire()
+            self.nextout += 1
+            result = self.data[self.nextout]
+            del self.data[self.nextout]
+        finally:
+            self.lock.release()
         return result
     def peek(self):
-        return self.data[self.nextout + 1] if self.data else None
+        try:
+            self.lock.acquire()
+            result = self.data[self.nextout + 1] if self.data else None
+        finally:
+            self.lock.release()
+        return result
 
 NUM_COLORS = 30
 
 class CircleOfFifths():
     NOTES = ['C', 'G', 'D', 'A', 'E', 'B', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F']
-    COLORS = [sg.Color(*adj_color(r, g, b)) for (r, g, b) in COLORS_RGB]
     MEM_COLORS = [ sg.Color(int(210.*(NUM_COLORS-i)/NUM_COLORS) , int(230.*(NUM_COLORS-i)/NUM_COLORS), int(250.*(NUM_COLORS-i)/NUM_COLORS)) for i in range(0, NUM_COLORS+1)]
-    MEM_THRESHOLD = 10.0 # In floating-point seconds
+    MEM_THRESHOLD = 3.0 # In floating-point seconds
 
     # Forgetting factor: f(t) = 1.0 / (K ** ( t / T ))
     # Integral of f(t): F(t) = C - T / (logn(K) * K ** ( t / T ))
@@ -268,8 +284,6 @@ class CircleOfFifths():
             self.model_root,
             transform=[sg.Translate(margin - x_min + x_pos, margin - y_min + y_pos)]
         )
-
-        self.lock = Lock()
 
         self.press_counter = [0] * 12
         self.memory_counter = [0] * 12
@@ -319,27 +333,36 @@ class CircleOfFifths():
         current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
         threshold_timestamp = current_timestamp - self.MEM_THRESHOLD
 
-        data = self.last_notes.peek()
-        while data is not None:
-            timestamp, action, num_key, num_octave, num_note, note, channel = data
-            inner_label = 'inner_' + note
-            outer_label = 'outer_' + note
+        try:
+            queue_timestamp = self.last_notes.peek()[0]
+        except (TypeError, IndexError):
+            queue_timestamp = None
 
-            data = None
-            if timestamp < threshold_timestamp:
-                self.last_notes.pop()
-                #print("%s" % ((action, num_key, num_octave, num_note, note, channel),))
+        while not queue_timestamp is None and queue_timestamp < threshold_timestamp:
+            timestamp, action, num_key, num_octave, num_note, note_id, channel = self.last_notes.pop()
 
-                if action:
-                    self.press_counter_past[num_note] += 1
-                else:
-                    self.press_counter_past[num_note] -= 1
-                    self.memory_counter[num_note] -= 1
+            inner_label = 'inner_' + note_id
+            outer_label = 'outer_' + note_id
 
-                #if self.press_counter[num_note] > 0 or self.memory_counter[num_note] > 0:
-                #    self.model_elements[inner_label].fill = self.MEM_COLOR
-                #else:
-                #    self.model_elements[inner_label].fill = self.orig_fill_color[inner_label]
+            #print("%s" % ((action, num_key, num_octave, num_note, note, channel),))
+
+            if action:
+                self.press_counter_past[num_note] += 1
+            else:
+                self.press_counter_past[num_note] -= 1
+                self.memory_counter[num_note] -= 1
+
+            try:
+                queue_timestamp = self.last_notes.peek()[0]
+            except (TypeError, IndexError):
+                queue_timestamp = None
+
+            #print("%s" % (self.memory_counter,))
+
+            #if self.press_counter[num_note] > 0 or self.memory_counter[num_note] > 0:
+            #    self.model_elements[inner_label].fill = self.MEM_COLOR
+            #else:
+            #    self.model_elements[inner_label].fill = self.orig_fill_color[inner_label]
 
         self.adj_memory()
 
@@ -359,9 +382,10 @@ class CircleOfFifths():
             self.memory_counter[num_note] += 1
         else:
             self.press_counter[num_note] -= 1
+            assert(self.press_counter[num_note] >= 0)
 
         if self.press_counter[num_note] > 0:
-            self.model_elements[outer_label].fill = self.COLORS[channel]
+            self.model_elements[outer_label].fill = COLORS[channel]
         else:
             self.model_elements[outer_label].fill = self.orig_fill_color[outer_label]
 
@@ -501,10 +525,11 @@ class HexLayout():
             self.press_counter[num_note] += 1
         else:
             self.press_counter[num_note] -= 1
+        assert(self.press_counter[num_note] >= 0)
 
         for note_id in note_ids:
             if self.press_counter[num_note] > 0:
-                self.model_elements[note_id].stroke = self.COLORS[channel]
+                self.model_elements[note_id].stroke = COLORS[channel]
                 self.model_elements[note_id].stroke_width = 3
             else:
                 self.model_elements[note_id].stroke = self.IDLE_STROKE
@@ -513,12 +538,14 @@ class HexLayout():
         self.update()
 
 class CircleOfTriads():
-    NOTES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'] * 2
     CIRCLES = ['z', 'y', 'x', 'w', 'v', 'u']
+    NOTES = ['C', 'G', 'D', 'A', 'E', 'B', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F']
 
     COLOR_BLACK = sg.Color(0, 0, 0)
     COLOR_GRAY = sg.Color(128, 128, 128)
     COLOR_WHITE = sg.Color(255, 255, 255)
+
+    MEM_THRESHOLD = 0.2 # In floating-point seconds
 
     TRIADS_MAJOR      = [ (1<<i | 1<<((i+4)%12) | 1<<((i+7)%12)) for i in range(0, 12) ]
     TRIADS_MINOR      = [ (1<<i | 1<<((i+3)%12) | 1<<((i+7)%12)) for i in range(0, 12) ]
@@ -539,6 +566,11 @@ class CircleOfTriads():
             transform=[sg.Translate(margin - x_min + x_pos, margin - y_min + y_pos)]
         )
 
+        self.last_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
+        self.press_counter = [0] * 12
+        self.memory_counter = [0] * 12
+        self.last_notes = []
+
         for circle in self.CIRCLES:
             for note in self.NOTES:
                 element_id = '{}{}'.format(circle, note)
@@ -553,11 +585,60 @@ class CircleOfTriads():
         (x_min, y_min), (x_max, y_max) = self.model_root.aabbox()
         return (x_max - x_min), (y_max - y_min)
 
+    def update(self):
+        current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
+        threshold_timestamp = current_timestamp - self.MEM_THRESHOLD
+        delta_timestamp = current_timestamp - self.last_timestamp
+
+        try:
+            queue_timestamp = self.last_notes[0][0]
+        except (TypeError, IndexError):
+            queue_timestamp = None
+
+        while not queue_timestamp is None and queue_timestamp < threshold_timestamp:
+            timestamp, action, num_key, num_octave, num_note, note_id, channel = self.last_notes.pop(0)
+
+            if not action:
+                self.memory_counter[num_note] -= 1
+                assert(self.memory_counter[num_note] >= 0)
+
+            try:
+                queue_timestamp = self.last_notes[0][0]
+            except (TypeError, IndexError):
+                queue_timestamp = None
+
+            print("%s" % (self.memory_counter,))
+
+        for num_note in range(0, 12):
+            note_id = self.NOTES[num_note]
+            if self.memory_counter[num_note] > 0:
+                self.model_elements['z' + note_id].stroke = self.COLOR_BLACK
+                self.model_elements['z' + note_id].stroke_width = 2
+            else:
+                self.model_elements['z' + note_id].stroke = self.COLOR_GRAY
+                self.model_elements['z' + note_id].stroke_width = 1
+
     def press(self, num_key, channel, action=True):
+        current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
+
         num_octave = num_key // 12
         num_note = (num_key*7)%12 % 12
+        note_id = self.NOTES[num_note]
 
+        self.last_notes.append((current_timestamp, action, num_key, num_octave, num_note, note_id, channel))
 
+        if action:
+            self.press_counter[num_note] += 1
+            self.memory_counter[num_note] += 1
+            #print("%s" % (self.memory_counter,))
+        else:
+            self.press_counter[num_note] -= 1
+            assert(self.press_counter[num_note] >= 0)
+
+        if self.press_counter[num_note] > 0:
+            self.model_elements['z' + note_id].fill = COLORS[channel]
+        else:
+            self.model_elements['z' + note_id].fill = self.COLOR_WHITE
 
 class MusicKeybOctave():
     NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
@@ -635,17 +716,19 @@ feedback = sg.Group(fill=None, stroke=sg.Color.red)
 #midi_thread = Thread(target = midi_player.random_play, args = (8, 10, 0.3))
 #midi_thread.start()
 
-midi_file_player = MidiFileSoundPlayer(os.path.join(this_dir, 'Bach_Fugue_BWV578.mid'), [piano, fifths, hexagonal])
+midi_file_player = MidiFileSoundPlayer(os.path.join(this_dir, 'Bach_Fugue_BWV578.mid'), [piano, fifths, hexagonal, triads])
 midi_thread = Thread(target = midi_file_player.play)
 midi_thread.start()
 
-midi_input = RtMidiSoundPlayer([piano, fifths, hexagonal])
+midi_input = RtMidiSoundPlayer([piano, fifths, hexagonal, triads])
 
 width, height = window_size
+config = pyglet.gl.Config(sample_buffers=1, samples=4)
 window = pyglet.window.Window(
     width=width,
     height=height,
     resizable=True,
+    config=config,
     )
 
 gl_prepare()
@@ -656,6 +739,8 @@ def on_resize(width, height):
 
 @window.event
 def on_draw():
+    pyglet.gl.glEnable(pyglet.gl.GL_LINE_SMOOTH)
+    pyglet.gl.glHint(pyglet.gl.GL_LINE_SMOOTH_HINT, pyglet.gl.GL_DONT_CARE)
     gl_display(scene, feedback)
 
 def keyboard(c):
@@ -699,10 +784,13 @@ def on_mouse_drag(x, y, dx, dy, buttons, modifiers):
 def update(dt, window=None):
     fifths.update()
     hexagonal.update()
+    triads.update()
 
-pyglet.clock.schedule_interval(update, 1/60, window)
+pyglet.clock.schedule_interval(update, 1./60, window)
 
 pyglet.app.run()
+
+pyglet.clock.schedule_interval(update, 0, window) # Specifying an interval of 0 prevents the function from being called again
 
 midi_thread.join()
 print("All threads finished")
