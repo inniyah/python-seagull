@@ -260,10 +260,82 @@ class FifoList():
             self.lock.release()
         return result
 
+
+class FifthsWithMemory():
+    NOTES = ['C', 'G', 'D', 'A', 'E', 'B', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F']
+
+    # Forgetting factor: f(t) = 1.0 / (K ** ( t / T ))
+    # Integral of f(t): F(t) = C - T / (logn(K) * K ** ( t / T ))
+    # If F(t) == 0: C = T0 / logn(K)
+    def mem_f(self, t): # when t -> inf, mem_f -> 0
+        return 1.0 / (self.mem_k ** (t / self.mem_t))
+    def mem_F(self, t): # when t -> inf, mem_F -> MEM_C
+        return self.mem_c - self.mem_t / (math.log(self.mem_k) * (self.mem_k ** (t / self.mem_t)))
+
+    def __init__(self, mem_t=1.0, mem_k=3.0, mem_threshold = 5.0):
+        self.mem_t = mem_t # In T floating-point seconds
+        self.mem_k = mem_k # The value will be divided by K. It needs to be > 1
+        self.mem_c = self.mem_t / math.log(self.mem_k) # As calculated above
+
+        self.press_counter = [0] * 12
+        self.memory_counter = [0] * 12
+        self.press_counter_past = [0] * 12
+        self.accum_time = [0.] * 12
+
+        self.mem_threshold = mem_threshold # In floating-point seconds
+        self.last_notes = FifoList()
+
+        self.last_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
+
+    def update(self, current_timestamp = None):
+        if current_timestamp is None:
+            current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
+        threshold_timestamp = current_timestamp - self.mem_threshold
+
+        try:
+            queue_timestamp = self.last_notes.peek()[0]
+        except (TypeError, IndexError):
+            queue_timestamp = None
+
+        while not queue_timestamp is None and queue_timestamp < threshold_timestamp:
+            timestamp, action, num_key, num_octave, num_note, note_id, channel = self.last_notes.pop()
+
+            #print("%s" % ((action, num_key, num_octave, num_note, note, channel),))
+
+            if action:
+                self.press_counter_past[num_note] += 1
+            else:
+                self.press_counter_past[num_note] -= 1
+                self.memory_counter[num_note] -= 1
+
+            try:
+                queue_timestamp = self.last_notes.peek()[0]
+            except (TypeError, IndexError):
+                queue_timestamp = None
+
+    def press(self, num_key, channel, action, current_timestamp):
+        if current_timestamp is None:
+            current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
+
+        num_octave = num_key // 12
+        num_note = (num_key*7)%12 % 12
+        note_id = self.NOTES[num_note]
+
+        self.last_notes.append((current_timestamp, action, num_key, num_octave, num_note, note_id, channel))
+
+        if action:
+            self.press_counter[num_note] += 1
+            self.memory_counter[num_note] += 1
+        else:
+            self.press_counter[num_note] -= 1
+            assert(self.press_counter[num_note] >= 0)
+
+        return num_key, num_octave, num_note, note_id
+
+
 NUM_COLORS = 30
 
-class CircleOfFifths():
-    NOTES = ['C', 'G', 'D', 'A', 'E', 'B', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F']
+class CircleOfFifths(FifthsWithMemory):
     MEM_COLORS = [ sg.Color(int(210.*(NUM_COLORS-i)/NUM_COLORS) , int(230.*(NUM_COLORS-i)/NUM_COLORS), int(250.*(NUM_COLORS-i)/NUM_COLORS)) for i in range(0, NUM_COLORS+1)]
     MEM_THRESHOLD = 3.0 # In floating-point seconds
 
@@ -274,13 +346,9 @@ class CircleOfFifths():
     MEM_K = 3.0 # The value will be divided by K. It needs to be > 1
     MEM_C = MEM_T / math.log(MEM_K) # As calculated above
 
-    def mem_f(self, t): # when t -> inf, mem_f -> 0
-        return 1.0 / (self.MEM_K ** (t / self.MEM_T))
-
-    def mem_F(self, t): # when t -> inf, mem_F -> MEM_C
-        return self.MEM_C - self.MEM_T / (math.log(self.MEM_K) * (self.MEM_K ** (t / self.MEM_T)))
-
     def __init__(self, x_pos=0, y_pos=0):
+        super().__init__(self.MEM_T, self.MEM_K, self.MEM_THRESHOLD)
+
         with open(os.path.join(this_dir, "CircleOfFifths.svg")) as f:
             svg = f.read()
         self.model_root, self.model_elements = parse(svg)
@@ -296,15 +364,6 @@ class CircleOfFifths():
             self.model_root,
             transform=[sg.Translate(margin - x_min + x_pos, margin - y_min + y_pos)]
         )
-
-        self.press_counter = [0] * 12
-        self.memory_counter = [0] * 12
-        self.press_counter_past = [0] * 12
-        self.accum_time = [0.] * 12
-
-        self.last_notes = FifoList()
-
-        self.last_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
 
         self.orig_fill_color = {}
         for note in self.NOTES:
@@ -343,58 +402,15 @@ class CircleOfFifths():
 
     def update(self):
         current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
-        threshold_timestamp = current_timestamp - self.MEM_THRESHOLD
-
-        try:
-            queue_timestamp = self.last_notes.peek()[0]
-        except (TypeError, IndexError):
-            queue_timestamp = None
-
-        while not queue_timestamp is None and queue_timestamp < threshold_timestamp:
-            timestamp, action, num_key, num_octave, num_note, note_id, channel = self.last_notes.pop()
-
-            inner_label = 'inner_' + note_id
-            outer_label = 'outer_' + note_id
-
-            #print("%s" % ((action, num_key, num_octave, num_note, note, channel),))
-
-            if action:
-                self.press_counter_past[num_note] += 1
-            else:
-                self.press_counter_past[num_note] -= 1
-                self.memory_counter[num_note] -= 1
-
-            try:
-                queue_timestamp = self.last_notes.peek()[0]
-            except (TypeError, IndexError):
-                queue_timestamp = None
-
-            #print("%s" % (self.memory_counter,))
-
-            #if self.press_counter[num_note] > 0 or self.memory_counter[num_note] > 0:
-            #    self.model_elements[inner_label].fill = self.MEM_COLOR
-            #else:
-            #    self.model_elements[inner_label].fill = self.orig_fill_color[inner_label]
-
+        super().update(current_timestamp)
         self.adj_memory()
 
     def press(self, num_key, channel, action=True):
         current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
+        num_key, num_octave, num_note, note_id = super().press(num_key, channel, action, current_timestamp)
 
-        num_octave = num_key // 12
-        num_note = (num_key*7)%12 % 12
-        note = self.NOTES[num_note]
-        inner_label = 'inner_' + note
-        outer_label = 'outer_' + note
-
-        self.last_notes.append((current_timestamp, action, num_key, num_octave, num_note, note, channel))
-
-        if action:
-            self.press_counter[num_note] += 1
-            self.memory_counter[num_note] += 1
-        else:
-            self.press_counter[num_note] -= 1
-            assert(self.press_counter[num_note] >= 0)
+        inner_label = 'inner_' + note_id
+        outer_label = 'outer_' + note_id
 
         if self.press_counter[num_note] > 0:
             self.model_elements[outer_label].fill = COLORS[channel]
@@ -402,6 +418,7 @@ class CircleOfFifths():
             self.model_elements[outer_label].fill = self.orig_fill_color[outer_label]
 
         self.adj_memory()
+
 
 NOTES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'] * 2
 
@@ -548,6 +565,7 @@ class HexLayout():
                 self.model_elements[note_id].stroke_width = 1
 
         self.update()
+
 
 class CircleOfTriads():
     CIRCLES = ['z', 'y', 'x', 'w', 'v', 'u']
