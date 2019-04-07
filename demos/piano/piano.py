@@ -21,6 +21,8 @@ parser.add_argument('-m', '--midi', type=str, help='Midi file', required=False, 
 parser.add_argument('-v', '--verbose', action="store_true", help="verbose output" )
 args = parser.parse_args()
 
+GRAD_COLORS = 30
+
 if args.verbose:
 	print("~ Verbose!")
 else:
@@ -287,6 +289,19 @@ class FifthsWithMemory():
 
         self.last_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
 
+    def adjust_accum_time(self,  current_timestamp = None):
+        if current_timestamp is None:
+            current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
+        delta_timestamp = current_timestamp - self.last_timestamp
+
+        for num_note in range(0, 12):
+            self.accum_time[num_note] = self.accum_time[num_note] * self.mem_f(delta_timestamp) # Move current value into the past
+            # Update accumulated time with previous value of press_counter, before updating it
+            if self.press_counter[num_note] > 0:
+                 self.accum_time[num_note] += self.mem_F(delta_timestamp) # Add more, if key pressed
+        self.last_timestamp = current_timestamp
+        #print("%s" % (self.accum_time,))
+
     def update(self, current_timestamp = None):
         if current_timestamp is None:
             current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
@@ -313,6 +328,8 @@ class FifthsWithMemory():
             except (TypeError, IndexError):
                 queue_timestamp = None
 
+        self.adjust_accum_time(current_timestamp)
+
     def press(self, num_key, channel, action, current_timestamp):
         if current_timestamp is None:
             current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
@@ -330,13 +347,12 @@ class FifthsWithMemory():
             self.press_counter[num_note] -= 1
             assert(self.press_counter[num_note] >= 0)
 
+        self.adjust_accum_time(current_timestamp)
+
         return num_key, num_octave, num_note, note_id
 
-
-NUM_COLORS = 30
-
 class CircleOfFifths(FifthsWithMemory):
-    MEM_COLORS = [ sg.Color(int(210.*(NUM_COLORS-i)/NUM_COLORS) , int(230.*(NUM_COLORS-i)/NUM_COLORS), int(250.*(NUM_COLORS-i)/NUM_COLORS)) for i in range(0, NUM_COLORS+1)]
+    MEM_COLORS = [ sg.Color(int(210.*(GRAD_COLORS-i)/GRAD_COLORS) , int(230.*(GRAD_COLORS-i)/GRAD_COLORS), int(250.*(GRAD_COLORS-i)/GRAD_COLORS)) for i in range(0, GRAD_COLORS+1)]
     MEM_THRESHOLD = 3.0 # In floating-point seconds
 
     # Forgetting factor: f(t) = 1.0 / (K ** ( t / T ))
@@ -380,16 +396,6 @@ class CircleOfFifths(FifthsWithMemory):
         return (x_max - x_min), (y_max - y_min)
 
     def adj_memory(self):
-        current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
-        delta_timestamp = current_timestamp - self.last_timestamp
-        for num_note in range(0, 12):
-            self.accum_time[num_note] = self.accum_time[num_note] * self.mem_f(delta_timestamp) # Move current value into the past
-            # Update accumulated time with previous value of press_counter, before updating it
-            if self.press_counter[num_note] > 0:
-                 self.accum_time[num_note] += self.mem_F(delta_timestamp) # Add more, if key pressed
-        self.last_timestamp = current_timestamp
-        #print("%s" % (self.accum_time,))
-
         for num_note in range(0, 12):
             note = self.NOTES[num_note]
             inner_label = 'inner_' + note
@@ -426,10 +432,10 @@ class HexLayout():
     COLORS = [sg.Color(*adj_color(r, g, b)) for (r, g, b) in COLORS_RGB]
     MEM_COLORS = [
         sg.Color(
-            int(180. - 120. * ((NUM_COLORS-i)/NUM_COLORS)**1.5),
-            int(200. - 120. * ((NUM_COLORS-i)/NUM_COLORS)**1.5),
-            int(210. - 120. * ((NUM_COLORS-i)/NUM_COLORS)**1.5)
-        ) for i in range(0, NUM_COLORS+1)]
+            int(180. - 120. * ((GRAD_COLORS-i)/GRAD_COLORS)**1.5),
+            int(200. - 120. * ((GRAD_COLORS-i)/GRAD_COLORS)**1.5),
+            int(210. - 120. * ((GRAD_COLORS-i)/GRAD_COLORS)**1.5)
+        ) for i in range(0, GRAD_COLORS+1)]
 
     IDLE_COLOR = sg.Color(50, 50, 50)
     IDLE_STROKE = sg.Color(0, 0, 0)
@@ -571,12 +577,26 @@ class Chords(FifthsWithMemory):
     FIFTHS_NOTES    = ['C', 'G', 'D', 'A', 'E', 'B', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F']
     CHROMATIC_NOTES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']
 
-    MEM_COLORS = [ sg.Color(int(210.*(NUM_COLORS-i)/NUM_COLORS) , int(230.*(NUM_COLORS-i)/NUM_COLORS), int(250.*(NUM_COLORS-i)/NUM_COLORS)) for i in range(0, NUM_COLORS+1)]
-    MEM_THRESHOLD = 2.0 # In floating-point seconds
+    MEM_COLORS_BLACK = [ sg.Color(
+        int(128.*(i)/GRAD_COLORS),
+        int(128.*(i)/GRAD_COLORS),
+        int(128.*(i)/GRAD_COLORS)
+    ) for i in range(0, GRAD_COLORS+1)]
+
+    MEM_COLORS_WHITE = [ sg.Color(
+        int(128.*(GRAD_COLORS-i)/GRAD_COLORS/2. + 128.),
+        int(128.*(GRAD_COLORS-i)/GRAD_COLORS/2. + 128.),
+        int(128.*(GRAD_COLORS-i)/GRAD_COLORS/2. + 128.)
+    ) for i in range(0, GRAD_COLORS+1)]
+
+    MEM_THRESHOLD = 5.0 # In floating-point seconds
 
     COLOR_BLACK = sg.Color(0, 0, 0)
     COLOR_GRAY = sg.Color(128, 128, 128)
     COLOR_WHITE = sg.Color(255, 255, 255)
+
+    COLOR_WHITE_KEY_PRESSED = sg.Color(255, 211, 0)
+    COLOR_BLACK_KEY_PRESSED = sg.Color(208, 168, 0)
 
     # Forgetting factor: f(t) = 1.0 / (K ** ( t / T ))
     # Integral of f(t): F(t) = C - T / (logn(K) * K ** ( t / T ))
@@ -586,24 +606,24 @@ class Chords(FifthsWithMemory):
     MEM_C = MEM_T / math.log(MEM_K) # As calculated above
 
     CHORDS_INFO = [
-        [ [], (0, 4, 7, 11, 14), None ], # Major 9th Chord
-        [ [], (0, 4, 7, 10, 14), None ], # Dominant 9th Chord
-        [ [], (0, 4, 7, 10, 15), None ], # 7#9 Chord or 'Hendrix Chord'
-        [ [], (0, 4, 7, 10, 13), None ], # 'Irritating' 7b9 Chord
-        [ [], (0, 4, 7, 11), None ], # Major 7th Chord
-        [ [], (0, 4, 7, 10), None ], # Dominant 7th Chord
-        [ [], (0, 3, 7, 10), None ], # Minor 7th Chord
-        [ [], (0, 3, 6, 10), None ], # Half-Diminished Minor 7th Chord
-        [ [], (0, 3, 6, 9), None ], # Diminished Minor 7th Chord
-        [ [], (0, 4, 7, 14), None ], # Add9 Chord
+        [ [], (0, 4, 7, 11, 14), sg.Color(0, 180, 100) ], # Major 9th Chord
+        [ [], (0, 4, 7, 10, 14), sg.Color(0, 180, 100) ], # Dominant 9th Chord
+        [ [], (0, 4, 7, 10, 15), sg.Color(0, 100, 180) ], # 7#9 Chord or 'Hendrix Chord'
+        [ [], (0, 4, 7, 10, 13), sg.Color(200, 0, 100) ], # 'Irritating' 7b9 Chord
+        [ [], (0, 4, 7, 11), sg.Color(0, 180, 100) ], # Major 7th Chord
+        [ [], (0, 4, 7, 10), sg.Color(0, 180, 100) ], # Dominant 7th Chord
+        [ [], (0, 3, 7, 10), sg.Color(100, 0, 200) ], # Minor 7th Chord
+        [ [], (0, 3, 6, 10), sg.Color(200, 0, 100) ], # Half-Diminished Minor 7th Chord
+        [ [], (0, 3, 6, 9), sg.Color(200, 0, 100) ], # Diminished Minor 7th Chord
+        [ [], (0, 4, 7, 14), sg.Color(0, 180, 100) ], # Add9 Chord
         [ [], (0, 4, 7), sg.Color(0, 180, 100) ], # Major Triad
         [ [], (0, 3, 7), sg.Color(100, 0, 200) ], # Minor Triad
         [ [], (0, 3, 6), sg.Color(200, 0, 100) ], # Diminished Triad
         [ [], (0, 4, 8), sg.Color(0, 100, 180) ], # Augmented Triad
-        [ [], (0, 2, 7), None ], # Sus2 Triad
-        [ [], (0, 7, 9), None ], # 6Sus Triad
-        [ [], (0, 7, 10), None ], # 7Sus Triad
-        [ [], (0, 7), None ], # Parallel Fifths
+        [ [], (0, 2, 7), sg.Color(180, 100, 0) ], # Sus2 Triad
+        [ [], (0, 7, 9), sg.Color(180, 100, 0) ], # 6Sus Triad
+        [ [], (0, 7, 10), sg.Color(180, 100, 0) ], # 7Sus Triad
+        [ [], (0, 7), sg.Color(0, 180, 100) ], # Parallel Fifths
         [ [], (0, 4), None ], # Major Third
         [ [], (0, 3), None ], # Minor Third
     ]
@@ -666,12 +686,14 @@ class Chords(FifthsWithMemory):
         for num_note in range(0, 12):
             note_id = self.FIFTHS_NOTES[num_note]
             key_label = '{}'.format(note_id)
+            is_white = (len(key_label) == 1)
 
             if self.press_counter[num_note] > 0:
-                self.model_elements[key_label].fill = self.COLOR_GRAY
+                self.model_elements[key_label].fill = self.COLOR_WHITE_KEY_PRESSED if is_white else self.COLOR_BLACK_KEY_PRESSED 
             elif self.memory_counter[num_note] > 0:
-                i = int(len(self.MEM_COLORS) * self.accum_time[num_note] / self.MEM_C)
-                self.model_elements[key_label].fill = self.MEM_COLORS[max(0, min(i, len(self.MEM_COLORS)-1))]
+                colors = self.MEM_COLORS_WHITE if is_white else self.MEM_COLORS_BLACK
+                i = int(len(colors) * self.accum_time[num_note] / self.MEM_C)
+                self.model_elements[key_label].fill = colors[max(0, min(i, len(colors)-1))]
             else:
                 self.model_elements[key_label].fill = self.orig_fill_color[key_label]
 
