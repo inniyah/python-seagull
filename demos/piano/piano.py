@@ -836,7 +836,7 @@ class CircleOfTriads():
         for triad_signatures, label_prefix, color_on, color_off in [
             (self.TRIADS_AUGMENTED,  'z', sg.Color(0, 100, 180),   sg.Color(215, 215, 255)),
             (self.TRIADS_MAJOR,      'y', sg.Color(0, 180, 100),   sg.Color(210, 255, 210)),
-            (self.TRIADS_SUSPENDED,  'x', sg.Color(150, 150, 150), sg.Color(255, 255, 255)),
+            (self.PARALLEL_FIFTHS,   'x', sg.Color(150, 150, 150), sg.Color(255, 255, 255)),
             (self.TRIADS_MINOR,      'w', sg.Color(100, 0, 200),   sg.Color(215, 215, 255)),
             (self.TRIADS_DIMINISHED, 'v', sg.Color(200, 0, 100),   sg.Color(255, 215, 215)),
         ]:
