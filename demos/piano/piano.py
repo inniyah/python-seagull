@@ -629,6 +629,17 @@ class Chords(FifthsWithMemory):
         [ [], (0, 4,    10, 14, 17), sg.Color(0, 180, 100), "Dominant 11th Chord, leaving out the 5th" ],
         [ [], (0, 3,    10, 14, 17), sg.Color(0, 180, 100), "Minor 11th Chord, leaving out the 5th" ],
 
+        [ [], (0, 4, 7, 11), sg.Color(0, 180, 100), "Major 7th Chord" ],
+        [ [], (0, 4, 7, 10), sg.Color(0, 180, 100), "Dominant 7th Chord" ],
+        [ [], (0, 3, 7, 10), sg.Color(100, 0, 200), "Minor 7th Chord" ],
+        [ [], (0, 3, 6, 10), sg.Color(200, 0, 100), "Half-Diminished Minor 7th Chord" ],
+        [ [], (0, 3, 6, 9),  sg.Color(200, 0, 100), "Diminished Minor 7th Chord" ],
+
+        [ [], (0, 4, 7, 14), sg.Color(0, 180, 100), "Add9 Chord" ],
+        [ [], (0, 4, 7, 9), sg.Color(0, 180, 100), "Add6 Chord" ],
+        [ [], (0, 4, 5, 7), sg.Color(0, 180, 100), "Add4 Chord" ],
+        [ [], (0, 2, 4, 7), sg.Color(0, 180, 100), "Add4 Chord" ],
+
         [ [], (0,       11, 14, 17), sg.Color(0, 180, 100), "Major 11th Chord, leaving out the 3rd and the 5th" ],
         [ [], (0,       10, 14, 17), sg.Color(0, 180, 100), "Dominant 11th Chord, leaving out the 3rd and the 5th" ],
 
@@ -644,13 +655,6 @@ class Chords(FifthsWithMemory):
         [ [], (0, 4,    10, 14), sg.Color(0, 180, 100), "Dominant 9th Chord, leaving out the 5th" ],
         [ [], (0, 3,    10, 14), sg.Color(0, 180, 100), "Minor 9th Chord, leaving out the 5th" ],
 
-        [ [], (0, 4, 7, 11), sg.Color(0, 180, 100), "Major 7th Chord" ],
-        [ [], (0, 4, 7, 10), sg.Color(0, 180, 100), "Dominant 7th Chord" ],
-        [ [], (0, 3, 7, 10), sg.Color(100, 0, 200), "Minor 7th Chord" ],
-        [ [], (0, 3, 6, 10), sg.Color(200, 0, 100), "Half-Diminished Minor 7th Chord" ],
-        [ [], (0, 3, 6, 9),  sg.Color(200, 0, 100), "Diminished Minor 7th Chord" ],
-        [ [], (0, 4, 7, 14), sg.Color(0, 180, 100), "Add9 Chord" ],
-
         [ [], (0, 4, 7),  sg.Color(0, 180, 100), "Major Triad" ],
         [ [], (0, 3, 7),  sg.Color(100, 0, 200), "Minor Triad" ],
         [ [], (0, 3, 6),  sg.Color(200, 0, 100), "Diminished Triad" ],
@@ -660,8 +664,9 @@ class Chords(FifthsWithMemory):
         [ [], (0, 7, 10), sg.Color(180, 100, 0), "7Sus Triad" ],
 
         [ [], (0, 7), sg.Color(0, 180, 100), "Parallel Fifths" ],
-        [ [], (0, 4), None, "Major Third" ],
-        [ [], (0, 3), None, "Minor Third" ],
+        [ [], (0, 4), None, "Major Third Interval" ],
+        [ [], (0, 3), None, "Minor Third Interval" ],
+        [ [], (0, 11), None, "Major Seventh Interval" ],
     ]
 
     def __init__(self, x_pos=0, y_pos=0):
@@ -761,7 +766,7 @@ class Chords(FifthsWithMemory):
                         self.model_elements[label].stroke = self.COLOR_BLACK
                         self.model_elements[label].stroke_width = 3 if interval == 0 else 1
                     used_pitch_classes |= chord_signature
-                    print("Chord:{})".format(chord_name))
+                    print("Chord: {} on {})".format(chord_name, self.CHROMATIC_NOTES[(num_signature) % 12]))
                     row += 1
                 else:
                     pass
