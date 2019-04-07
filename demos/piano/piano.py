@@ -517,6 +517,7 @@ class HexLayout():
     def update(self):
         current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
         delta_timestamp = current_timestamp - self.last_timestamp
+
         for num_note in range(0, 12):
             self.accum_time[num_note] = self.accum_time[num_note] * self.mem_f(delta_timestamp) # Move current value into the past
             # Update accumulated time with previous value of press_counter, before updating it
@@ -566,6 +567,154 @@ class HexLayout():
 
         self.update()
 
+class Chords(FifthsWithMemory):
+    FIFTHS_NOTES    = ['C', 'G', 'D', 'A', 'E', 'B', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F']
+    CHROMATIC_NOTES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']
+
+    MEM_COLORS = [ sg.Color(int(210.*(NUM_COLORS-i)/NUM_COLORS) , int(230.*(NUM_COLORS-i)/NUM_COLORS), int(250.*(NUM_COLORS-i)/NUM_COLORS)) for i in range(0, NUM_COLORS+1)]
+    MEM_THRESHOLD = 2.0 # In floating-point seconds
+
+    COLOR_BLACK = sg.Color(0, 0, 0)
+    COLOR_GRAY = sg.Color(128, 128, 128)
+    COLOR_WHITE = sg.Color(255, 255, 255)
+
+    # Forgetting factor: f(t) = 1.0 / (K ** ( t / T ))
+    # Integral of f(t): F(t) = C - T / (logn(K) * K ** ( t / T ))
+    # If F(t) == 0: C = T0 / logn(K)
+    MEM_T = 2.0 # In T floating-point seconds
+    MEM_K = 2.0 # The value will be divided by K. It needs to be > 1
+    MEM_C = MEM_T / math.log(MEM_K) # As calculated above
+
+    CHORDS_INFO = [
+        [ [], (0, 4, 7, 11, 14), None ], # Major 9th Chord
+        [ [], (0, 4, 7, 10, 14), None ], # Dominant 9th Chord
+        [ [], (0, 4, 7, 10, 15), None ], # 7#9 Chord or 'Hendrix Chord'
+        [ [], (0, 4, 7, 10, 13), None ], # 'Irritating' 7b9 Chord
+        [ [], (0, 4, 7, 11), None ], # Major 7th Chord
+        [ [], (0, 4, 7, 10), None ], # Dominant 7th Chord
+        [ [], (0, 3, 7, 10), None ], # Minor 7th Chord
+        [ [], (0, 3, 6, 10), None ], # Half-Diminished Minor 7th Chord
+        [ [], (0, 3, 6, 9), None ], # Diminished Minor 7th Chord
+        [ [], (0, 4, 7, 14), None ], # Add9 Chord
+        [ [], (0, 4, 7), sg.Color(0, 180, 100) ], # Major Triad
+        [ [], (0, 3, 7), sg.Color(100, 0, 200) ], # Minor Triad
+        [ [], (0, 3, 6), sg.Color(200, 0, 100) ], # Diminished Triad
+        [ [], (0, 4, 8), sg.Color(0, 100, 180) ], # Augmented Triad
+        [ [], (0, 2, 7), None ], # Sus2 Triad
+        [ [], (0, 7, 9), None ], # 6Sus Triad
+        [ [], (0, 7, 10), None ], # 7Sus Triad
+        [ [], (0, 7), None ], # Parallel Fifths
+        [ [], (0, 4), None ], # Major Third
+        [ [], (0, 3), None ], # Minor Third
+    ]
+
+    def __init__(self, x_pos=0, y_pos=0):
+        super().__init__(self.MEM_T, self.MEM_K, self.MEM_THRESHOLD)
+        for chord_info in self.CHORDS_INFO:
+            if not chord_info[0]:
+                chord_info[0] = [0] * 12
+                for i in range(0, 12):
+                    chord_mask = 0
+                    for num_note in chord_info[1]:
+                        chord_mask |= 1 << (i + num_note) % 12
+                    chord_info[0][i] = chord_mask
+            if chord_info[2] is None:
+                chord_info[2] = self.COLOR_GRAY
+
+        with open(os.path.join(this_dir, "ChordMatrix.svg")) as f:
+            svg = f.read()
+        self.model_root, self.model_elements = parse(svg)
+        #sys.stdout.write(serialize(self.model_root))
+        #sys.stdout.write("elements = %s\n" % (self.model_elements,))
+        #json.dump(self.model_root, sys.stdout, cls=JSONDebugEncoder, indent=2, sort_keys=True)
+        #json.dump(self.model_elements, sys.stdout, cls=JSONDebugEncoder, indent=2, sort_keys=True)
+        #sys.stdout.write("\n") # Python JSON dump misses last newline
+        (x_min, y_min), (x_max, y_max) = self.model_root.aabbox()
+        self.width = x_max - x_min
+        self.height = y_max - y_min
+        self.model_root = sg.Use(
+            self.model_root,
+            transform=[sg.Translate(margin - x_min + x_pos, margin - y_min + y_pos)]
+        )
+
+        self.orig_fill_color = {}
+        for note_id in self.CHROMATIC_NOTES:
+            key_label = '{}'.format(note_id)
+            self.orig_fill_color[key_label] = self.model_elements[key_label].fill
+        for row in range(1,12):
+            row_label = 'row{:02d}'.format(row)
+            self.model_elements[row_label].active = False
+            for note_id in self.CHROMATIC_NOTES:
+                label = '{}{:02d}'.format(note_id, row)
+                self.model_elements[label].active = False
+
+    def root(self):
+        return self.model_root
+
+    def size(self):
+        (x_min, y_min), (x_max, y_max) = self.model_root.aabbox()
+        return (x_max - x_min), (y_max - y_min)
+
+    def update_triads(self):
+        for row in range(1, 12):
+            row_label = 'row{:02d}'.format(row)
+            self.model_elements[row_label].active = False
+            for note_id in self.CHROMATIC_NOTES:
+                label = '{}{:02d}'.format(note_id, row)
+                self.model_elements[label].active = False
+
+        for num_note in range(0, 12):
+            note_id = self.FIFTHS_NOTES[num_note]
+            key_label = '{}'.format(note_id)
+
+            if self.press_counter[num_note] > 0:
+                self.model_elements[key_label].fill = self.COLOR_GRAY
+            elif self.memory_counter[num_note] > 0:
+                i = int(len(self.MEM_COLORS) * self.accum_time[num_note] / self.MEM_C)
+                self.model_elements[key_label].fill = self.MEM_COLORS[max(0, min(i, len(self.MEM_COLORS)-1))]
+            else:
+                self.model_elements[key_label].fill = self.orig_fill_color[key_label]
+
+        row = 1
+        max_row = 11
+
+        pitch_classes = 0
+        mem_pitch_classes = 0
+        used_pitch_classes = 0
+        for num_note in range(0, 12):
+            value = 1 << ((num_note*7) % 12)
+            if self.press_counter[num_note] > 0:
+                pitch_classes |= value
+            if self.memory_counter[num_note] > 0:
+                mem_pitch_classes |= value
+
+        for chord_signatures, chord_intervals, color in self.CHORDS_INFO:
+            for num_signature, chord_signature in enumerate(chord_signatures):
+                if (pitch_classes & chord_signature) == chord_signature and (used_pitch_classes & chord_signature) != chord_signature:
+                    row_label = 'row{:02d}'.format(row)
+                    self.model_elements[row_label].active = True
+                    self.model_elements[row_label].stroke = color
+                    for interval in chord_intervals:
+                        note_id = self.CHROMATIC_NOTES[(num_signature + interval) % 12]
+                        label = '{}{:02d}'.format(note_id, row)
+                        self.model_elements[label].fill = color
+                        self.model_elements[label].active = True
+                        self.model_elements[label].stroke = self.COLOR_BLACK
+                        self.model_elements[label].stroke_width = 3 if interval == 0 else 1
+                    used_pitch_classes |= chord_signature
+                    row += 1
+                else:
+                    pass
+
+    def update(self):
+        current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
+        super().update(current_timestamp)
+        self.update_triads()
+
+    def press(self, num_key, channel, action=True):
+        current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
+        num_key, num_octave, num_note, note_id = super().press(num_key, channel, action, current_timestamp)
+        self.update_triads()
 
 class CircleOfTriads():
     CIRCLES = ['z', 'y', 'x', 'w', 'v', 'u']
@@ -780,8 +929,9 @@ class MusicKeyboard():
 piano = MusicKeyboard()
 fifths = CircleOfFifths(piano.width + margin)
 hexagonal = HexLayout(0, piano.height + margin)
-triads = CircleOfTriads(hexagonal.width + margin, piano.height + margin)
-scene = sg.Group([piano.root(), fifths.root(), hexagonal.root(), triads.root()])
+triads_circle = CircleOfTriads(hexagonal.width + margin, piano.height + margin)
+chords = Chords(hexagonal.width + margin + triads_circle.width + margin, piano.height + margin)
+scene = sg.Group([piano.root(), fifths.root(), hexagonal.root(), triads_circle.root(), chords.root()])
 
 window_size = int(piano.width + margin + fifths.width + 2 * margin), int(piano.height + margin + hexagonal.height + 2 * margin)
 
@@ -795,14 +945,14 @@ midi_filename = args.midi
 #midi_filename = 'Bach_Fugue_BWV578.mid'
 #midi_filename = 'Debussy_Arabesque_No1.mid'
 if not midi_filename is None:
-    midi_file_player = MidiFileSoundPlayer(os.path.join(this_dir, midi_filename), [piano, fifths, hexagonal, triads])
+    midi_file_player = MidiFileSoundPlayer(os.path.join(this_dir, midi_filename), [piano, fifths, hexagonal, triads_circle, chords])
     midi_thread = Thread(target = midi_file_player.play)
     midi_thread.start()
 else:
     midi_file_player = None
     midi_thread = None
 
-midi_input = RtMidiSoundPlayer([piano, fifths, hexagonal, triads])
+midi_input = RtMidiSoundPlayer([piano, fifths, hexagonal, triads_circle, chords])
 
 width, height = window_size
 #config = pyglet.gl.Config(sample_buffers=1, samples=4)
@@ -866,7 +1016,8 @@ def on_mouse_drag(x, y, dx, dy, buttons, modifiers):
 def update(dt, window=None):
     fifths.update()
     hexagonal.update()
-    triads.update()
+    triads_circle.update()
+    chords.update()
 
 pyglet.clock.schedule_interval(update, 1./60, window)
 
