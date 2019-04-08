@@ -671,6 +671,7 @@ class Chords(FifthsWithMemory):
 
     def __init__(self, x_pos=0, y_pos=0):
         super().__init__(self.MEM_T, self.MEM_K, self.MEM_THRESHOLD)
+
         for chord_info in self.CHORDS_INFO:
             if not chord_info[0]:
                 chord_info[0] = [0] * 12
@@ -781,9 +782,15 @@ class Chords(FifthsWithMemory):
         num_key, num_octave, num_note, note_id = super().press(num_key, channel, action, current_timestamp)
         self.update_triads()
 
-class CircleOfTriads():
+class CircleOfTriads(FifthsWithMemory):
     CIRCLES = ['z', 'y', 'x', 'w', 'v', 'u']
-    NOTES = ['C', 'G', 'D', 'A', 'E', 'B', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F']
+
+    # Forgetting factor: f(t) = 1.0 / (K ** ( t / T ))
+    # Integral of f(t): F(t) = C - T / (logn(K) * K ** ( t / T ))
+    # If F(t) == 0: C = T0 / logn(K)
+    MEM_T = 2.0 # In T floating-point seconds
+    MEM_K = 2.0 # The value will be divided by K. It needs to be > 1
+    MEM_C = MEM_T / math.log(MEM_K) # As calculated above
 
     COLOR_BLACK = sg.Color(0, 0, 0)
     COLOR_GRAY = sg.Color(128, 128, 128)
@@ -799,6 +806,8 @@ class CircleOfTriads():
     PARALLEL_FIFTHS   = [ (1<<i | 1<<((i+7)%12)) for i in range(0, 12) ]
 
     def __init__(self, x_pos=0, y_pos=0):
+        super().__init__(self.MEM_T, self.MEM_K, self.MEM_THRESHOLD)
+
         with open(os.path.join(this_dir, "CircleOfTriads.svg")) as f:
             svg = f.read()
         self.model_root, self.model_elements = parse(svg)
@@ -809,11 +818,6 @@ class CircleOfTriads():
             self.model_root,
             transform=[sg.Translate(margin - x_min + x_pos, margin - y_min + y_pos)]
         )
-
-        self.last_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
-        self.press_counter = [0] * 12
-        self.memory_counter = [0] * 12
-        self.last_notes = []
 
         for note in self.NOTES:
             self.model_elements[note].stroke = self.COLOR_GRAY
@@ -869,27 +873,7 @@ class CircleOfTriads():
 
     def update(self):
         current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
-        threshold_timestamp = current_timestamp - self.MEM_THRESHOLD
-        delta_timestamp = current_timestamp - self.last_timestamp
-
-        try:
-            queue_timestamp = self.last_notes[0][0]
-        except (TypeError, IndexError):
-            queue_timestamp = None
-
-        while not queue_timestamp is None and queue_timestamp < threshold_timestamp:
-            timestamp, action, num_key, num_octave, num_note, note_id, channel = self.last_notes.pop(0)
-
-            if not action:
-                self.memory_counter[num_note] -= 1
-                assert(self.memory_counter[num_note] >= 0)
-
-            try:
-                queue_timestamp = self.last_notes[0][0]
-            except (TypeError, IndexError):
-                queue_timestamp = None
-
-            #print("%s" % (self.memory_counter,))
+        super().update(current_timestamp)
 
         for num_note in range(0, 12):
             note_id = self.NOTES[num_note]
@@ -906,20 +890,11 @@ class CircleOfTriads():
 
     def press(self, num_key, channel, action=True):
         current_timestamp = time.time_ns() / (10 ** 9) # Converted to floating-point seconds
+        num_key, num_octave, num_note, note_id = super().press(num_key, channel, action, current_timestamp)
 
         num_octave = num_key // 12
         num_note = (num_key*7)%12 % 12
         note_id = self.NOTES[num_note]
-
-        self.last_notes.append((current_timestamp, action, num_key, num_octave, num_note, note_id, channel))
-
-        if action:
-            self.press_counter[num_note] += 1
-            self.memory_counter[num_note] += 1
-            #print("%s" % (self.memory_counter,))
-        else:
-            self.press_counter[num_note] -= 1
-            assert(self.press_counter[num_note] >= 0)
 
         if self.press_counter[num_note] > 0:
             self.model_elements[note_id].fill = COLORS[channel]
