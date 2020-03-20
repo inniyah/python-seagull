@@ -21,28 +21,26 @@ except NameError:
 
 # constants ##################################################################
 
-_CONTRIBS_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                              "..", "..",
-                                              "contribs", "freefont-20120503"))
+_FREEFONT_PATH = '/usr/share/fonts/opentype/freefont/'
 
 _FALLBACK_FONTS = {
 	"sans-serif": {
-		(False, False): os.path.join(_CONTRIBS_PATH, "FreeSans.otf"),
-		(False, True):  os.path.join(_CONTRIBS_PATH, "FreeSansOblique.otf"),
-		(True,  False): os.path.join(_CONTRIBS_PATH, "FreeSansBold.otf"),
-		(True,  True):  os.path.join(_CONTRIBS_PATH, "FreeSansBoldOblique.otf"),
+		(False, False): os.path.join(_FREEFONT_PATH, "FreeSans.otf"),
+		(False, True):  os.path.join(_FREEFONT_PATH, "FreeSansOblique.otf"),
+		(True,  False): os.path.join(_FREEFONT_PATH, "FreeSansBold.otf"),
+		(True,  True):  os.path.join(_FREEFONT_PATH, "FreeSansBoldOblique.otf"),
 	},
 	"serif": {
-		(False, False): os.path.join(_CONTRIBS_PATH, "FreeSerif.otf"),
-		(False, True):  os.path.join(_CONTRIBS_PATH, "FreeSerifItalic.otf"),
-		(True,  False): os.path.join(_CONTRIBS_PATH, "FreeSerifBold.otf"),
-		(True,  True):  os.path.join(_CONTRIBS_PATH, "FreeSerifBoldItalic.otf"),
+		(False, False): os.path.join(_FREEFONT_PATH, "FreeSerif.otf"),
+		(False, True):  os.path.join(_FREEFONT_PATH, "FreeSerifItalic.otf"),
+		(True,  False): os.path.join(_FREEFONT_PATH, "FreeSerifBold.otf"),
+		(True,  True):  os.path.join(_FREEFONT_PATH, "FreeSerifBoldItalic.otf"),
 	},
 	"mono": {
-		(False, False): os.path.join(_CONTRIBS_PATH, "FreeMono.otf"),
-		(False, True):  os.path.join(_CONTRIBS_PATH, "FreeMonoOblique.otf"),
-		(True,  False): os.path.join(_CONTRIBS_PATH, "FreeMonoBold.otf"),
-		(True,  True):  os.path.join(_CONTRIBS_PATH, "FreeMonoBoldOblique.otf"),
+		(False, False): os.path.join(_FREEFONT_PATH, "FreeMono.otf"),
+		(False, True):  os.path.join(_FREEFONT_PATH, "FreeMonoOblique.otf"),
+		(True,  False): os.path.join(_FREEFONT_PATH, "FreeMonoBold.otf"),
+		(True,  True):  os.path.join(_FREEFONT_PATH, "FreeMonoBoldOblique.otf"),
 	},
 }
 
